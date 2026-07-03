@@ -69,6 +69,37 @@ python3 -m pip install PyOpenGL PyOpenGL_accelerate
    python3 Assi2.py
    ```
 
+## ⚠️ macOS Specific Configuration
+
+If you are running these scripts on macOS, you might encounter the following error:
+
+```
+freeglut (Assi1.py): failed to open display ''
+```
+
+This happens because PyOpenGL defaults to finding Homebrew's `freeglut` (which relies on X11) instead of Apple's native `GLUT.framework`.
+
+### Solution
+
+The repository includes a **patched `OpenGL` library** that resolves this issue without requiring XQuartz or modifying system packages. The local `OpenGL/` folders (present in both `Lab1/Assignment/` and `Lab1/First Program/` directories) override the library loader in `OpenGL/platform/darwin.py` to prioritize the native macOS `/System/Library/Frameworks/GLUT.framework/GLUT`.
+
+**No additional setup is required** — simply ensure the patched `OpenGL` folder is present in the same directory as your assignment scripts. If the `OpenGL` folder is missing for any reason, it can be extracted from **`OpenGL.zip`** (located at the root directory).
+
+```bash
+# Only run this if OpenGL/ folder is missing
+unzip OpenGL.zip
+```
+
+### Running on macOS
+
+Once the `OpenGL` folder is in place, run the scripts normally:
+
+```bash
+cd LAB/Lab1/Assignment/
+python3 Assi1.py
+python3 Assi2.py
+```
+
 ## 📚 Resources
 
 - `CSE423_OpenGL_Lab_Reference.ipynb`: Detailed lab reference with explanations and examples
@@ -81,9 +112,6 @@ python3 -m pip install PyOpenGL PyOpenGL_accelerate
 - The `OpenGL/` folders contain Python OpenGL bindings included with the lab files.
 - If you already have a system-wide PyOpenGL install, these local `OpenGL/` directories can often be ignored.
 
-## 👤 Author
-
-BRACU Student - CSE423 (8th Semester)
 
 ---
 
