@@ -1,3 +1,4 @@
+from OpenGL.GL import glVertex
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
@@ -8,6 +9,7 @@ winWidth, winHeight = 500, 500
 dnfac = 1.0
 rndrps = []
 rndx = 0
+cloud_x = 0
 
 def rndrop():
     for i in range(200):
@@ -165,6 +167,14 @@ def draw_grass():
     glLineWidth(2)
     glBegin(GL_LINES)
     for i in range(10, winWidth, 30):
+        #Tuft 0
+        glVertex2f(i + 5, 20)
+        glVertex2f(i, 35)
+        glVertex2f(i + 5, 20)
+        glVertex2f(i + 10, 35)
+        glVertex2f(i + 5, 20)
+        glVertex2f(i + 5, 40)
+
         # Tuft 1
         glVertex2f(i + 15, 60)
         glVertex2f(i + 10, 75)
@@ -190,8 +200,36 @@ def draw_grass():
         glVertex2f(i + 10, 200)
     glEnd()
 
+def draw_clouds():
+    global cloud_x
+    s_color(0.9, 0.9, 0.9, 0.2, 0.2, 0.2)
+    
+    # Cloud 1 (Left)
+    d_rect(90 + cloud_x, 410, 140 + cloud_x, 430)
+    d_rect(70 + cloud_x, 400, 160 + cloud_x, 410)
+    d_rect(80 + cloud_x, 390, 150 + cloud_x, 400)
+    
+    # Cloud 2 (Right)
+    d_rect(320 + cloud_x, 440, 370 + cloud_x, 460)
+    d_rect(290 + cloud_x, 420, 400 + cloud_x, 440)
+    d_rect(300 + cloud_x, 410, 390 + cloud_x, 420)
+
+    # Cloud 3 (Middle)
+    d_rect(190 + cloud_x, 390, 240 + cloud_x, 410)
+    d_rect(170 + cloud_x, 380, 260 + cloud_x, 390)
+    d_rect(180 + cloud_x, 370, 250 + cloud_x, 380)
+
+    # Cloud 4 (Far Right)
+    d_rect(510 + cloud_x, 460, 560 + cloud_x, 480)
+    d_rect(490 + cloud_x, 440, 580 + cloud_x, 460)
+    d_rect(500 + cloud_x, 430, 570 + cloud_x, 440)
+
 def animate():
-    global rndx, rndrps, winWidth, winHeight
+    global rndx, rndrps, winWidth, winHeight, cloud_x
+    # cloud animation
+    cloud_x += 0.8
+    if cloud_x > winWidth:
+        cloud_x = -400
     for x in rndrps:
         x[1] -= 5
         x[0] += rndx
@@ -211,10 +249,35 @@ def display():
     s_color(0.6, 0.4, 0.1, 0.2, 0.1, 0.0) #Ground
     d_rect(0, 0, winWidth, 250)
     draw_grass()
+    draw_clouds()
     main_house()
     draw_lamppost()
     d_rain()
     glutSwapBuffers()
+
+def special_keys_listener(key, x, y):
+    global rndx
+    if key == GLUT_KEY_LEFT:
+        rndx -= 0.5
+        print("Rain is bending left")
+    elif key == GLUT_KEY_RIGHT:
+        rndx += 0.5
+        print("Rain is bending right")
+    glutPostRedisplay()
+
+def keyboard_keys_listener(key, x, y):
+    global dnfac
+    if key == b'd' or key == b'D':
+        dnfac += 0.05
+        print("Day point added")
+        if dnfac > 1.0:
+            dnfac = 1.0
+    elif key == b'n' or key == b'N':
+        dnfac -= 0.05
+        print("Night point added")
+        if dnfac < 0.0:
+            dnfac = 0.0
+    glutPostRedisplay()
 
 def main():
     rndrop()
@@ -225,6 +288,8 @@ def main():
     glutCreateWindow(b"Ass1.py")
     glutDisplayFunc(display)
     glutIdleFunc(animate)
+    glutSpecialFunc(special_keys_listener)
+    glutKeyboardFunc(keyboard_keys_listener)
     glutMainLoop()
 
 if __name__ == "__main__":
