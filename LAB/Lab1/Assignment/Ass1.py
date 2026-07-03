@@ -54,12 +54,23 @@ def setup_projection():
     glMatrixMode(GL_MODELVIEW)
 
 def main_house():
-    # House body (white/gray)
-    s_color(1.0, 1.0, 1.0, 0.5, 0.5, 0.5)
+    # House body (Oak Planks)
+    s_color(0.7, 0.5, 0.3, 0.3, 0.2, 0.1)
     d_rect(150, 200, 350, 300)
     
-    # House border (black)
+    # House grid (to look like blocks)
     s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    glLineWidth(1)
+    glBegin(GL_LINES)
+    # horizontal lines
+    for y in range(200, 320, 20):
+        glVertex2f(150, y); glVertex2f(350, y)
+    # vertical lines
+    for x in range(150, 370, 20):
+        glVertex2f(x, 200); glVertex2f(x, 300)
+    glEnd()
+    
+    # House border (black)
     glLineWidth(3)
     glBegin(GL_LINE_LOOP)
     glVertex2f(150, 200)
@@ -68,25 +79,37 @@ def main_house():
     glVertex2f(150, 300)
     glEnd()
     
-    # Roof (purple)
-    s_color(0.4, 0.2, 0.7, 0.2, 0.1, 0.4)
-    glBegin(GL_TRIANGLES)
-    glVertex2f(130, 300)
-    glVertex2f(370, 300)
-    glVertex2f(250, 390)
-    glEnd()
+    # Roof (Cobblestone)
+    s_color(0.5, 0.5, 0.5, 0.2, 0.2, 0.2)
+    # Layer 1
+    d_rect(130, 300, 370, 320)
+    # Layer 2
+    d_rect(150, 320, 350, 340)
+    # Layer 3
+    d_rect(170, 340, 330, 360)
+    # Layer 4
+    d_rect(190, 360, 310, 380)
+    # Layer 5
+    d_rect(210, 380, 290, 400)
     
-    # Roof border (black)
+    # Roof border/grid (black)
     s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    glLineWidth(3)
-    glBegin(GL_LINE_LOOP)
-    glVertex2f(130, 300)
-    glVertex2f(370, 300)
-    glVertex2f(250, 390)
-    glEnd()
+    glLineWidth(2)
+    # Draw outline for each step to make it look like blocks
+    for i in range(5):
+        w_start = 130 + i*20
+        w_end = 370 - i*20
+        h_start = 300 + i*20
+        h_end = 320 + i*20
+        glBegin(GL_LINE_LOOP)
+        glVertex2f(w_start, h_start)
+        glVertex2f(w_end, h_start)
+        glVertex2f(w_end, h_end)
+        glVertex2f(w_start, h_end)
+        glEnd()
     
-    # Door (blue)
-    s_color(0.2, 0.5, 1.0, 0.1, 0.25, 0.5)
+    # Door (Oak)
+    s_color(0.5, 0.3, 0.1, 0.2, 0.1, 0.0)
     d_rect(230, 200, 270, 260)
     
     # Door border (black)
@@ -99,8 +122,20 @@ def main_house():
     glVertex2f(230, 260)
     glEnd()
     
-    # Left window (blue)
-    s_color(0.2, 0.5, 1.0, 0.1, 0.25, 0.5)
+    # Minecraft door windows (top half)
+    s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
+    d_rect(235, 235, 245, 255)
+    d_rect(255, 235, 265, 255)
+    s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(235, 235); glVertex2f(245, 235); glVertex2f(245, 255); glVertex2f(235, 255)
+    glEnd()
+    glBegin(GL_LINE_LOOP)
+    glVertex2f(255, 235); glVertex2f(265, 235); glVertex2f(265, 255); glVertex2f(255, 255)
+    glEnd()
+    
+    # Left window (Glass Pane)
+    s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
     d_rect(175, 225, 215, 265)
     
     # Left window grills (black cross)
@@ -120,8 +155,8 @@ def main_house():
     glVertex2f(175, 265)
     glEnd()
     
-    # Right window (blue)
-    s_color(0.2, 0.5, 1.0, 0.1, 0.25, 0.5)
+    # Right window (Glass Pane)
+    s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
     d_rect(285, 225, 325, 265)
     
     # Right window grills (black cross)
@@ -163,7 +198,7 @@ def draw_lamppost():
     glEnd()
 
 def draw_grass():
-    s_color(0.1, 0.6, 0.1, 0.0, 0.2, 0.0) # Green
+    s_color(0.3, 0.7, 0.2, 0.1, 0.5, 0.1) # Minecraft Green (lighter at night for contrast)
     glLineWidth(2)
     glBegin(GL_LINES)
     for i in range(10, winWidth, 30):
@@ -202,7 +237,7 @@ def draw_grass():
 
 def draw_clouds():
     global cloud_x
-    s_color(0.9, 0.9, 0.9, 0.2, 0.2, 0.2)
+    s_color(1.0, 1.0, 1.0, 0.4, 0.4, 0.4) # Minecraft Cloud
     
     # Cloud 1 (Left)
     d_rect(90 + cloud_x, 410, 140 + cloud_x, 430)
@@ -242,11 +277,11 @@ def animate():
     glutPostRedisplay()
 
 def display():
-    s_color(0.6, 0.8, 1.0, 0.0, 0.0, 0.0, is_bg=True)
+    s_color(0.5, 0.7, 1.0, 0.0, 0.0, 0.1, is_bg=True) # Minecraft Sky
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     setup_projection()
-    s_color(0.6, 0.4, 0.1, 0.2, 0.1, 0.0) #Ground
+    s_color(0.4, 0.8, 0.3, 0.05, 0.2, 0.05) # Minecraft Ground/Grass Block (darker at night)
     d_rect(0, 0, winWidth, 250)
     draw_grass()
     draw_clouds()
