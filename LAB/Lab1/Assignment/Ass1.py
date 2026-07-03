@@ -27,7 +27,7 @@ def s_color(rd, gd, bd, rn, gn, bn, is_bg=False):
         glColor3f(r, g, b)
 
 def d_rain():
-    s_color(0.5, 0.7, 1.0, 0.3, 0.4, 0.7)
+    s_color(0.3, 0.5, 0.9, 0.3, 0.4, 0.7) # Darker blue to contrast with day sky
     glLineWidth(1)
     glBegin(GL_LINES)
     for x in rndrps:
@@ -293,10 +293,10 @@ def display():
 def special_keys_listener(key, x, y):
     global rndx
     if key == GLUT_KEY_LEFT:
-        rndx -= 0.5
+        rndx -= 1.0
         print("Rain is bending left")
     elif key == GLUT_KEY_RIGHT:
-        rndx += 0.5
+        rndx += 1.0
         print("Rain is bending right")
     glutPostRedisplay()
 
@@ -304,14 +304,18 @@ def keyboard_keys_listener(key, x, y):
     global dnfac
     if key == b'd' or key == b'D':
         dnfac += 0.05
-        print("Day point added")
         if dnfac > 1.0:
             dnfac = 1.0
+            print("Max value reached!")
+        else:
+            print("Day point added")
     elif key == b'n' or key == b'N':
         dnfac -= 0.05
-        print("Night point added")
         if dnfac < 0.0:
             dnfac = 0.0
+            print("Min value reached!")
+        else:
+            print("Night point added")
     glutPostRedisplay()
 
 def main():
