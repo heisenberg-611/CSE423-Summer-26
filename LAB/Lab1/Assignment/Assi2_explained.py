@@ -73,29 +73,6 @@ def setup_projection():
     glMatrixMode(GL_MODELVIEW)
 
 
-# def draw_box():
-#     """Draw a one-pixel white boundary around the window so the box is visible.
-
-#     We use `GL_LINES` to draw the four edges. Coordinates use `winWidth-1`
-#     and `winHeight-1` to keep the line inside the pixel grid.
-#     """
-#     glColor3f(1.0, 1.0, 1.0)  # white boundary
-#     glBegin(GL_LINES)
-#     # top
-#     glVertex2f(0, winHeight - 1)
-#     glVertex2f(winWidth - 1, winHeight - 1)
-#     # bottom
-#     glVertex2f(0, 0)
-#     glVertex2f(winWidth - 1, 0)
-#     # left
-#     glVertex2f(0, 0)
-#     glVertex2f(0, winHeight - 1)
-#     # right
-#     glVertex2f(winWidth - 1, 0)
-#     glVertex2f(winWidth - 1, winHeight - 1)
-#     glEnd()
-
-
 def draw_points():
     """Render all points as small square points using `GL_POINTS`.
 

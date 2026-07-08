@@ -201,6 +201,8 @@ def draw_house():
     glEnd()
 
 
+
+
 def draw_rain():
     """Render each raindrop as a short line segment. The tail's end is
     offset by `rain_dx` so the rain appears to bend with wind.

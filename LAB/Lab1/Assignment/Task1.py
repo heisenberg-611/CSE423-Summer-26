@@ -11,7 +11,7 @@ rndx = 0
 cloud_x = 0
 
 def rndrop():
-    for i in range(200):
+    for i in range(300):
         x = random.randint(0, winWidth)
         y = random.randint(0, winHeight)
         rndrps.append([x,y])
@@ -59,7 +59,7 @@ def main_house():
     glEnd()
     
     # Roof 
-    s_color(0.5, 0.5, 0.5, 0.2, 0.2, 0.2)
+    s_color(0.4, 0.2, 0.7, 0.2, 0.1, 0.4)
     d_rect(130, 300, 370, 320)
     d_rect(150, 320, 350, 340)
     d_rect(170, 340, 330, 360)
@@ -75,12 +75,7 @@ def main_house():
     d_rect(235, 235, 245, 255)
     d_rect(255, 235, 265, 255)
     s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-    # glBegin(GL_LINE_LOOP)
-    # glVertex2f(235, 235); glVertex2f(245, 235); glVertex2f(245, 255); glVertex2f(235, 255)
-    # glEnd()
-    # glBegin(GL_LINE_LOOP)
-    # glVertex2f(255, 235); glVertex2f(265, 235); glVertex2f(265, 255); glVertex2f(255, 255)
-    # glEnd()
+    
     
     # Left window (Glass Pane)
     s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
@@ -94,15 +89,6 @@ def main_house():
     glVertex2f(175, 245); glVertex2f(215, 245)  # horizontal
     glEnd()
     
-    # Left window border (black)
-    # glLineWidth(2)
-    # glBegin(GL_LINE_LOOP)
-    # glVertex2f(175, 225)
-    # glVertex2f(215, 225)
-    # glVertex2f(215, 265)
-    # glVertex2f(175, 265)
-    # glEnd()
-    
     # Right window (Glass Pane)
     s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
     d_rect(285, 225, 325, 265)
@@ -114,15 +100,6 @@ def main_house():
     glVertex2f(305, 225); glVertex2f(305, 265)  # vertical
     glVertex2f(285, 245); glVertex2f(325, 245)  # horizontal
     glEnd()
-    
-    # Right window border (black)
-    # glLineWidth(2)
-    # glBegin(GL_LINE_LOOP)
-    # glVertex2f(285, 225)
-    # glVertex2f(325, 225)
-    # glVertex2f(325, 265)
-    # glVertex2f(285, 265)
-    # glEnd()
 
 def draw_lamppost():
     s_color(0.2, 0.2, 0.2, 0.1, 0.1, 0.1)
@@ -140,6 +117,30 @@ def draw_lamppost():
     glVertex2f(105, 350)
     glVertex2f(85, 370)
     glEnd()
+
+def draw_clouds():
+    global cloud_x
+    s_color(1.0, 1.0, 1.0, 0.4, 0.4, 0.4) # Minecraft Cloud
+    
+    # Cloud 1 (Left)
+    d_rect(90 + cloud_x, 410, 140 + cloud_x, 430)
+    d_rect(70 + cloud_x, 400, 160 + cloud_x, 410)
+    d_rect(80 + cloud_x, 390, 150 + cloud_x, 400)
+    
+    # Cloud 2 (Right)
+    d_rect(320 + cloud_x, 440, 370 + cloud_x, 460)
+    d_rect(290 + cloud_x, 420, 400 + cloud_x, 440)
+    d_rect(300 + cloud_x, 410, 390 + cloud_x, 420)
+
+    # Cloud 3 (Middle)
+    d_rect(190 + cloud_x, 390, 240 + cloud_x, 410)
+    d_rect(170 + cloud_x, 380, 260 + cloud_x, 390)
+    d_rect(180 + cloud_x, 370, 250 + cloud_x, 380)
+
+    # Cloud 4 (Far Right)
+    d_rect(510 + cloud_x, 460, 560 + cloud_x, 480)
+    d_rect(490 + cloud_x, 440, 580 + cloud_x, 460)
+    d_rect(500 + cloud_x, 430, 570 + cloud_x, 440)
 
 def draw_grass():
     s_color(0.3, 0.7, 0.2, 0.1, 0.5, 0.1)
@@ -177,9 +178,9 @@ def draw_grass():
 
 def animate():
     global rndx, rndrps, winWidth, winHeight, cloud_x
-    cloud_x += 0.8
-    if cloud_x > winWidth:
-        cloud_x = -400
+    # cloud_x += 0.8
+    # if cloud_x > winWidth:
+    #     cloud_x = -400
     for x in rndrps:
         x[1] -= 5
         x[0] += rndx
@@ -206,7 +207,7 @@ def display():
     s_color(0.4, 0.8, 0.3, 0.05, 0.2, 0.05)
     d_rect(0, 0, winWidth, 250)
     draw_grass()
-    # draw_clouds()
+    draw_clouds()
     main_house()
     draw_lamppost()
     d_rain()
@@ -228,16 +229,16 @@ def keyboard_keys_listener(key, x, y):
         dnfac += 0.05
         if dnfac > 1.0:
             dnfac = 1.0
-            print("Max value reached!")
+            print("Wake up from bed!")
         else:
-            print("Day point added")
+            print("Sun is rising...")
     elif key == b'n' or key == b'N':
         dnfac -= 0.05
         if dnfac < 0.0:
             dnfac = 0.0
-            print("Min value reached!")
+            print("Go to sleep!")
         else:
-            print("Night point added")
+            print("Getting Nighter...")
     glutPostRedisplay()
 
 def main():
