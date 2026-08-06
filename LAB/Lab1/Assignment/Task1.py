@@ -53,9 +53,11 @@ def main_house():
     glLineWidth(1)
     glBegin(GL_LINES)
     for y in range(200, 320, 20):
-        glVertex2f(150, y); glVertex2f(350, y)
+        glVertex2f(150, y)
+        glVertex2f(350, y)
     for x in range(150, 370, 20):
-        glVertex2f(x, 200); glVertex2f(x, 300)
+        glVertex2f(x, 200)
+        glVertex2f(x, 300)
     glEnd()
     
     # Roof 
@@ -70,11 +72,10 @@ def main_house():
     s_color(0.5, 0.3, 0.1, 0.2, 0.1, 0.0)
     d_rect(230, 200, 270, 260)
     
-    # Minecraft door windows (top half)
+    # Minecraft door windows
     s_color(0.8, 0.9, 1.0, 0.4, 0.5, 0.8)
     d_rect(235, 235, 245, 255)
     d_rect(255, 235, 265, 255)
-    s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     
     
     # Left window (Glass Pane)
@@ -85,8 +86,10 @@ def main_house():
     s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     glLineWidth(2)
     glBegin(GL_LINES)
-    glVertex2f(195, 225); glVertex2f(195, 265)  # vertical
-    glVertex2f(175, 245); glVertex2f(215, 245)  # horizontal
+    glVertex2f(195, 225) 
+    glVertex2f(195, 265)  # vertical
+    glVertex2f(175, 245) 
+    glVertex2f(215, 245)  # horizontal
     glEnd()
     
     # Right window (Glass Pane)
@@ -97,8 +100,10 @@ def main_house():
     s_color(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     glLineWidth(2)
     glBegin(GL_LINES)
-    glVertex2f(305, 225); glVertex2f(305, 265)  # vertical
-    glVertex2f(285, 245); glVertex2f(325, 245)  # horizontal
+    glVertex2f(305, 225) 
+    glVertex2f(305, 265)  # vertical
+    glVertex2f(285, 245) 
+    glVertex2f(325, 245)  # horizontal
     glEnd()
 
 def draw_lamppost():

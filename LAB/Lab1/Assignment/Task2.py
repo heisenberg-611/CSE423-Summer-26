@@ -97,7 +97,7 @@ def main():
     glutInit()
     glutInitDisplayMode(GLUT_RGB)
     glutInitWindowSize(W,H)
-    glutInitWindowPosition(100,100)
+    glutInitWindowPosition(0,0)
     glutCreateWindow(b"Task2")
     glutDisplayFunc(display)
     glutIdleFunc(animate)
