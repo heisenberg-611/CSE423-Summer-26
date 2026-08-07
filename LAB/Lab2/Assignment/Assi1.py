@@ -1,6 +1,10 @@
+from OpenGL.GLUT import glutKeyboardFunc
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+import random
+import time
+import sys
 
 # --- WINDOW SETTINGS ---
 W, H = 800, 800
@@ -17,6 +21,10 @@ CATCHER_Y = 20 # Catcher's fixed Y position near the bottom
 catcher_x = W // 2
 diamond_x = W // 2
 diamond_y = 600
+score = 0
+game_over = False
+paused = False
+cheat = False
 
 def iterate():
     glViewport(0, 0, W, H)
@@ -89,7 +97,9 @@ def from_zone0(x, y, zone):
     return FROM_ZONE0[zone](x, y)
 
 def draw_diamond():
-    glColor3f(1.0, 1.0, 0.0) # Yellow diamond
+    c = [random.uniform(0.0, 1.0) for _ in range(3)]
+    c[random.randint(0, 2)] = 1.0        # force one channel to full
+    glColor3fv(c)
     cx, cy = diamond_x, diamond_y
     
     # Top to Right
@@ -102,9 +112,11 @@ def draw_diamond():
     midpoint_line(cx - D_HALF_W, cy, cx, cy + D_HALF_H)
 
 def draw_catcher():
-    glColor3f(1.0, 1.0, 1.0) # White catcher
+    if game_over:
+        glColor3f(1.0, 0.0, 0.0) # Red on game over
+    else:
+        glColor3f(1.0, 1.0, 1.0) # White catcher
     cx, cy = catcher_x, CATCHER_Y
-    
     # Top Line
     midpoint_line(cx - C_HALF_W, cy + CATCHER_H, cx + C_HALF_W, cy + CATCHER_H)
     # Right Slant
@@ -146,8 +158,7 @@ def midpoint_line(x1, y1, x2, y2):
         else:
             d += incE
 
-# --- PART 3: MOVEMENT & CONTROLS ---
-import time
+# --- PART 3: MOVEMENT & CONTROLS ---\
 
 CATCHER_STEP = 20 # How fast the catcher moves per key press
 speed = 150.0  # Pixels per second
@@ -155,6 +166,9 @@ last_time = time.time()
 
 def special_key(key, x, y):
     global catcher_x
+    if game_over or paused:
+        return
+
     if key == GLUT_KEY_LEFT:
         catcher_x -= CATCHER_STEP
     elif key == GLUT_KEY_RIGHT:
@@ -165,24 +179,160 @@ def special_key(key, x, y):
         catcher_x = C_HALF_W
     elif catcher_x > W - C_HALF_W:
         catcher_x = W - C_HALF_W
-    
     glutPostRedisplay()
 
+def cheatkey(key, x, y):
+    global cheat
+    if key == b'c':
+        cheat = not cheat
+        print("Cheat mode:", "ON" if cheat else "OFF")
+
 def animate():
-    global diamond_y, last_time
+    global diamond_y, last_time, score, game_over, speed
     
+    if game_over or paused:
+        return
+
     now = time.time()
     dt = now - last_time
     last_time = now
+
+    if cheat:
+        step_catcher_toward(diamond_x, dt)
     
     # Update diamond position based on speed and time passed
     diamond_y -= speed * dt
+
+    if has_collided(diamond_box(), catcher_box()):
+        score += 1
+        speed += 10.0 # Increase speed by 10 pixels/second on each catch
+        print(f"Score: {score}")
+        spawn_diamond()
     
     # If the diamond falls off the bottom of the screen, reset it to the top for now
     if diamond_y < 0:
-        diamond_y = H
+        game_over = True
+        print(f"Game Over! Score: {score}")
+    
+
         
     glutPostRedisplay()
+
+# --- PART 4: GAME LOGIC ---
+
+# Collision Detection
+def has_collided(a, b):
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
+
+def diamond_box():
+    return (diamond_x - D_HALF_W, diamond_y - D_HALF_H, 2*D_HALF_W, 2*D_HALF_H)
+def catcher_box():
+    return (catcher_x - C_HALF_W, CATCHER_Y, 2*C_HALF_W, CATCHER_H)
+
+def spawn_diamond():
+    global diamond_x, diamond_y
+    diamond_x = random.randint(D_HALF_W, W - D_HALF_W)
+    diamond_y = H
+
+# --- PART 5: UI BUTTONS ---
+
+# Button Boxes (x, y, w, h)
+RESTART_BOX = (50, 750, 50, 50)
+PLAYPAUSE_BOX = (375, 750, 50, 50)
+EXIT_BOX = (700, 750, 50, 50)
+
+def draw_buttons():
+    # 1. Left Arrow (Restart) - Teal
+    glColor3f(0.0, 1.0, 1.0)
+    rx, ry = RESTART_BOX[0], RESTART_BOX[1]
+    # Arrow drawing
+    midpoint_line(rx + 40, ry + 25, rx + 10, ry + 25) # Main line
+    midpoint_line(rx + 10, ry + 25, rx + 25, ry + 40) # Top slant
+    midpoint_line(rx + 10, ry + 25, rx + 25, ry + 10) # Bottom slant
+
+    # 2. Play/Pause - Amber
+    glColor3f(1.0, 0.75, 0.0)
+    px, py = PLAYPAUSE_BOX[0], PLAYPAUSE_BOX[1]
+    if paused:
+        # Draw Play Icon (Triangle)
+        midpoint_line(px + 15, py + 10, px + 15, py + 40)
+        midpoint_line(px + 15, py + 40, px + 40, py + 25)
+        midpoint_line(px + 40, py + 25, px + 15, py + 10)
+    else:
+        # Draw Pause Icon (Two vertical lines)
+        midpoint_line(px + 15, py + 10, px + 15, py + 40)
+        midpoint_line(px + 35, py + 10, px + 35, py + 40)
+
+    # 3. Cross (Exit) - Red
+    glColor3f(1.0, 0.0, 0.0)
+    ex, ey = EXIT_BOX[0], EXIT_BOX[1]
+    midpoint_line(ex + 10, ey + 40, ex + 40, ey + 10)
+    midpoint_line(ex + 10, ey + 10, ex + 40, ey + 40)
+
+# --- PART 6: MOUSE CLICKS ---
+
+def inside(px, py, box):
+    bx, by, bw, bh = box
+    return bx <= px <= bx + bw and by <= py <= by + bh
+
+def restart():
+    global score, speed, game_over, paused, catcher_x
+    score = 0
+    speed = 150.0
+    game_over = False
+    paused = False
+    catcher_x = W // 2
+    spawn_diamond()
+    print("Starting over!")
+
+def mouse(button, state, x, y):
+    global paused
+    
+    # We only care about the left mouse button being pressed down
+    if button != GLUT_LEFT_BUTTON or state != GLUT_DOWN:
+        return
+        
+    # GLUT gives y measured from the TOP of the window, 
+    # but our OpenGL world has y=0 at the BOTTOM. Let's flip it!
+    wy = H - y 
+    
+    # Check which button was clicked
+    if inside(x, wy, RESTART_BOX):
+        restart()
+        
+    elif inside(x, wy, PLAYPAUSE_BOX):
+        paused = not paused
+        # The display function will automatically redraw the correct icon!
+        
+    elif inside(x, wy, EXIT_BOX):
+        print(f"Goodbye! Final Score: {score}")
+        sys.exit(0)
+
+def step_catcher_toward(target_x, dt):
+    global catcher_x
+    
+    # The catcher moves a bit faster than the keys so it doesn't miss!
+    max_step = 300.0 * dt 
+    
+    delta = target_x - catcher_x
+    
+    # Move towards the target, but don't overshoot it
+    if abs(delta) <= max_step:
+        catcher_x = target_x
+    else:
+        if delta > 0:
+            catcher_x += max_step
+        else:
+            catcher_x -= max_step
+            
+    # Clamp to screen edges just to be safe
+    if catcher_x < C_HALF_W:
+        catcher_x = C_HALF_W
+    elif catcher_x > W - C_HALF_W:
+        catcher_x = W - C_HALF_W
+
 
 # --- MAIN DISPLAY & RUN ---
 
@@ -190,8 +340,11 @@ def display():
     glClear(GL_COLOR_BUFFER_BIT)
     glLoadIdentity()
     iterate()
-    draw_diamond()
+    draw_buttons()
     draw_catcher()
+    if not game_over:
+        draw_diamond()
+
     glutSwapBuffers()
 
 glutInit()
@@ -200,5 +353,7 @@ glutInitWindowSize(W, H)
 glutCreateWindow(b"Catch the Diamonds!")
 glutDisplayFunc(display)
 glutSpecialFunc(special_key) 
+glutKeyboardFunc(cheatkey)
+glutMouseFunc(mouse)
 glutIdleFunc(animate) 
 glutMainLoop()
