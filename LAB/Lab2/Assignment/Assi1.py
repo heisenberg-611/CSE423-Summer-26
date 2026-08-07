@@ -1,7 +1,6 @@
-from OpenGL.GLUT import glutKeyboardFunc
-from OpenGL.GL import *
 from OpenGL.GLUT import *
-from OpenGL.GLU import *
+from OpenGL.GL import *
+from OpenGL.GL import *
 import random
 import time
 import sys
@@ -13,10 +12,10 @@ W, H = 800, 800
 # Shape Dimensions
 D_HALF_W = 10  # Diamond half width
 D_HALF_H = 15  # Diamond half height
-C_HALF_W = 40  # Catcher half width (top)
-C_HALF_W_BOTTOM = 30 # Catcher half width (bottom)
-CATCHER_H = 15 # Catcher height
-CATCHER_Y = 20 # Catcher's fixed Y position near the bottom
+C_HALF_W = 60  # Catcher half width (top)
+C_HALF_W_BOTTOM = 50 # Catcher half width (bottom)
+CATCHER_H = 20 # Catcher height
+CATCHER_Y = 10 # Catcher's fixed Y position near the bottom
 # Initial Positions
 catcher_x = W // 2
 diamond_x = W // 2
@@ -27,6 +26,7 @@ paused = False
 cheat = False
 dt=1
 diamond_color = [1.0, 1.0, 0.0]
+diamond_speed = 150.0
 
 def iterate():
     glViewport(0, 0, W, H)
@@ -160,8 +160,7 @@ def midpoint_line(x1, y1, x2, y2):
 
 # --- PART 3: MOVEMENT & CONTROLS ---\
 
-CATCHER_STEP = 20 # How fast the catcher moves per key press
-speed = 150.0  # Pixels per second
+CATCHER_STEP = 30 # How fast the catcher moves per key press
 last_time = time.time()
 
 def special_key(key, x, y):
@@ -188,7 +187,7 @@ def cheatkey(key, x, y):
         print("Cheat mode:", "ON" if cheat else "OFF")
 
 def animate():
-    global diamond_y, last_time, score, game_over, speed, CATCHER_STEP
+    global diamond_y, last_time, score, game_over, diamond_speed, CATCHER_STEP
     
     now = time.time()
     dt = now - last_time
@@ -200,12 +199,12 @@ def animate():
     if cheat:
         step_catcher_toward(diamond_x, dt)
     
-    # Update diamond position based on speed and time passed
-    diamond_y -= speed * dt
+    # Update diamond position based on diamond_speed and time passed
+    diamond_y -= diamond_speed * dt
 
     if has_collided(diamond_box(), catcher_box()):
         score += 1
-        speed += 10.0 # Increase speed by 10 pixels/second on each catch
+        diamond_speed += 10.0 # Increase diamond_speed by 10 pixels/second on each catch
         CATCHER_STEP += 1.5 # Increase manual catcher step size
         print(f"Score: {score}")
         spawn_diamond()
@@ -281,9 +280,9 @@ def inside(px, py, box):
     return bx <= px <= bx + bw and by <= py <= by + bh
 
 def restart():
-    global score, speed, game_over, paused, catcher_x, diamond_color, CATCHER_STEP
+    global score, diamond_speed, game_over, paused, catcher_x, diamond_color, CATCHER_STEP
     score = 0
-    speed = 150.0
+    diamond_speed = 150.0
     CATCHER_STEP = 20
     game_over = False
     paused = False
@@ -308,7 +307,8 @@ def mouse(button, state, x, y):
         
     elif inside(x, wy, PLAYPAUSE_BOX):
         paused = not paused
-        # The display function will automatically redraw the correct icon!
+        # Force the screen to redraw immediately to update the icon
+        glutPostRedisplay()
         
     elif inside(x, wy, EXIT_BOX):
         print(f"Goodbye! Final Score: {score}")
@@ -318,7 +318,7 @@ def step_catcher_toward(target_x, dt):
     global catcher_x
     
     # The catcher moves a bit faster than the falling diamond so it doesn't miss!
-    max_step = (speed + 150.0) * dt 
+    max_step = (diamond_speed + 150.0) * dt 
     
     delta = target_x - catcher_x
     
