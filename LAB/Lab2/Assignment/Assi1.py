@@ -25,6 +25,8 @@ score = 0
 game_over = False
 paused = False
 cheat = False
+dt=1
+diamond_color = [1.0, 1.0, 0.0]
 
 def iterate():
     glViewport(0, 0, W, H)
@@ -97,9 +99,7 @@ def from_zone0(x, y, zone):
     return FROM_ZONE0[zone](x, y)
 
 def draw_diamond():
-    c = [random.uniform(0.0, 1.0) for _ in range(3)]
-    c[random.randint(0, 2)] = 1.0        # force one channel to full
-    glColor3fv(c)
+    glColor3fv(diamond_color)
     cx, cy = diamond_x, diamond_y
     
     # Top to Right
@@ -188,14 +188,14 @@ def cheatkey(key, x, y):
         print("Cheat mode:", "ON" if cheat else "OFF")
 
 def animate():
-    global diamond_y, last_time, score, game_over, speed
+    global diamond_y, last_time, score, game_over, speed, CATCHER_STEP
     
-    if game_over or paused:
-        return
-
     now = time.time()
     dt = now - last_time
     last_time = now
+
+    if game_over or paused:
+        return
 
     if cheat:
         step_catcher_toward(diamond_x, dt)
@@ -206,6 +206,7 @@ def animate():
     if has_collided(diamond_box(), catcher_box()):
         score += 1
         speed += 10.0 # Increase speed by 10 pixels/second on each catch
+        CATCHER_STEP += 1.5 # Increase manual catcher step size
         print(f"Score: {score}")
         spawn_diamond()
     
@@ -232,9 +233,11 @@ def catcher_box():
     return (catcher_x - C_HALF_W, CATCHER_Y, 2*C_HALF_W, CATCHER_H)
 
 def spawn_diamond():
-    global diamond_x, diamond_y
+    global diamond_x, diamond_y, diamond_color
     diamond_x = random.randint(D_HALF_W, W - D_HALF_W)
     diamond_y = H
+    diamond_color = [random.uniform(0.0, 1.0) for _ in range(3)]
+    diamond_color[random.randint(0, 2)] = 1.0
 
 # --- PART 5: UI BUTTONS ---
 
@@ -278,9 +281,10 @@ def inside(px, py, box):
     return bx <= px <= bx + bw and by <= py <= by + bh
 
 def restart():
-    global score, speed, game_over, paused, catcher_x
+    global score, speed, game_over, paused, catcher_x, diamond_color, CATCHER_STEP
     score = 0
     speed = 150.0
+    CATCHER_STEP = 20
     game_over = False
     paused = False
     catcher_x = W // 2
@@ -313,8 +317,8 @@ def mouse(button, state, x, y):
 def step_catcher_toward(target_x, dt):
     global catcher_x
     
-    # The catcher moves a bit faster than the keys so it doesn't miss!
-    max_step = 300.0 * dt 
+    # The catcher moves a bit faster than the falling diamond so it doesn't miss!
+    max_step = (speed + 150.0) * dt 
     
     delta = target_x - catcher_x
     
