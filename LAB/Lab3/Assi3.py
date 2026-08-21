@@ -1,6 +1,7 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+from OpenGL.GLUT.fonts import GLUT_BITMAP_HELVETICA_18
 import math
 import random
 import time
@@ -36,8 +37,8 @@ TURN_STEP = 15.0
 BULLET_SPEED = 2000.0
 ENEMY_SPEED = 30.0
 
-CHEAT_SPIN_SPEED = 90.0
-CHEAT_FIRE_COOLDOWN = 0.25
+CHEAT_SPIN_SPEED = 150
+CHEAT_FIRE_COOLDOWN = 0.10
 
 fovY = 120
 
@@ -73,8 +74,9 @@ camera_angle = 180.0
 camera_height = 600.0
 camera_radius = 550.0
 
-# First-person eye height
-fp_height = 90.0
+# First-person over-the-head camera default height
+DEFAULT_FP_HEIGHT = 180.0
+fp_height = DEFAULT_FP_HEIGHT
 
 
 # -----------------------------
@@ -233,56 +235,54 @@ def draw_player():
     if game_over:
         glRotatef(-90, 0, 1, 0)
 
-    # -----------------------------
-    # Both Legs: two tapered cylinders (wider at body, narrower at feet)
+    # 1. -----------------------------
+    # Both Legs: two tapered cylinders (drawn first, bottom layer)
     # -----------------------------
     for side in (-1, 1):
         glPushMatrix()
-        glTranslatef(0, side * 15, 0)
+        glTranslatef(0, side * 14, 0)
         glColor3f(0, 0, 1)
-        gluCylinder(get_quadric(), 5, 12, 50, 10, 10)
+        gluCylinder(get_quadric(), 5, 11, 50, 10, 10)
         glPopMatrix()
 
-    # -----------------------------
-    # Body / Torso: cuboid
+    # 2. -----------------------------
+    # Body / Torso: wider shoulder-to-shoulder (Y=48), narrower front-to-back (X=18)
     # -----------------------------
     glPushMatrix()
     glTranslatef(0, 0, 75)
     glColor3f(0.25, 0.3, 0.15)
-    cuboid(30, 50, 50)
+    cuboid(18, 48, 50)
     glPopMatrix()
 
-    # -----------------------------
-    # Head: sphere (black sphere as per reference figure)
-    # -----------------------------
-    glPushMatrix()
-    glTranslatef(0, 0, 116)
-    glColor3f(0, 0, 0)
-    gluSphere(get_quadric(), 16, 12, 12)
-    glPopMatrix()
-
-    # -----------------------------
-    # Gun: cylinder in the middle between both hands (wider at base, narrower at tip)
-    # gluCylinder points along +z by default,
-    # so rotate it to point along +x.
+    # 3. -----------------------------
+    # Gun: cylinder in the middle between both hands
     # -----------------------------
     glPushMatrix()
-    glTranslatef(15, 0, 75)
+    glTranslatef(10, 0, 75)
     glRotatef(90, 0, 1, 0)
-    glColor3f(0.1, 0.1, 0.1)
+    glColor3f(0.7, 0.7, 0.7)
     gluCylinder(get_quadric(), 8, 2, 70, 10, 10)
     glPopMatrix()
 
-    # -----------------------------
-    # Both Hands: two tapered cylinders (wider at shoulder, narrower at hand)
+    # 4. -----------------------------
+    # Both Hands: two tapered cylinders holding the gun
     # -----------------------------
     for side in (-1, 1):
         glPushMatrix()
-        glTranslatef(15, side * 20, 80)
+        glTranslatef(10, side * 20, 80)
         glRotatef(90, 0, 1, 0)
         glColor3f(1, 0.8, 0.6)
         gluCylinder(get_quadric(), 8, 3, 40, 10, 10)
         glPopMatrix()
+
+    # 5. -----------------------------
+    # Head: sphere (drawn last so it sits on TOP of body and shoulders)
+    # -----------------------------
+    glPushMatrix()
+    glTranslatef(0, 0, 110)
+    glColor3f(0, 0, 0)
+    gluSphere(get_quadric(), 12, 12, 12)
+    glPopMatrix()
 
     glPopMatrix()
 
@@ -302,6 +302,7 @@ def fire_bullet():
         "dx": dx,
         "dy": dy
     })
+    print("Player Bullet Fired!")
 
 
 def draw_one_bullet(b):
@@ -374,17 +375,18 @@ def trigger_game_over():
 
 
 def move_bullets(dt):
-    global missed, game_over
+    global missed
 
     for b in list(bullets):
         b["x"] += b["dx"] * BULLET_SPEED * dt
         b["y"] += b["dy"] * BULLET_SPEED * dt
 
-        # Bullet left the arena => missed bullet
+        # Bullet left the arena => missed bullet (always counted)
         if abs(b["x"]) > GRID_LENGTH or abs(b["y"]) > GRID_LENGTH:
             if b in bullets:
                 bullets.remove(b)
             missed += 1
+            print(f"Bullet missed: {missed}")
 
     if missed >= 10:
         trigger_game_over()
@@ -447,6 +449,7 @@ def check_collisions(t):
         # 25 is an approximate player collision radius
         if dist <= r + 25:
             life -= 1
+            print(f"Remaining player life: {life}")
 
             if e in enemies:
                 enemies.remove(e)
@@ -464,8 +467,8 @@ def check_collisions(t):
 def do_cheat(dt, now):
     """
     Cheat mode:
-    - gun rotates continuously
-    - fires automatically when enemy is aligned with gun
+    - gun rotates continuously and smoothly
+    - fires automatically when an enemy is within the gun's geometric line of sight
     """
     global player_angle, last_cheat_shot
 
@@ -482,13 +485,13 @@ def do_cheat(dt, now):
             if dist < 1:
                 continue
 
-            enemy_dir_x = ex / dist
-            enemy_dir_y = ey / dist
+            r = enemy_radius(e, now)
+            # Exact geometric condition for gun ray to intersect the enemy sphere
+            required_alignment = dist / math.hypot(dist, r)
 
-            # Dot product close to 1 means enemy is in line of sight
-            alignment = enemy_dir_x * dx + enemy_dir_y * dy
+            alignment = (ex / dist) * dx + (ey / dist) * dy
 
-            if alignment > 0.99:
+            if alignment >= required_alignment:
                 fire_bullet()
                 last_cheat_shot = now
                 break
@@ -517,12 +520,13 @@ def restart():
 
     camera_angle = 180.0
     camera_height = 600.0
-    fp_height = 90.0
+    fp_height = DEFAULT_FP_HEIGHT
 
     last_cheat_shot = 0.0
 
     bullets.clear()
     init_enemies()
+    print(f"Remaining player life: {life}")
 
 def camera_position():
     """
@@ -531,11 +535,10 @@ def camera_position():
     """
     if first_person:
         dx, dy = direction_from_angle(view_angle)
-
-        # Move camera slightly forward so it is not inside the player's head
+        # Position camera behind and above the head, tracking rotation
         return (
-            player_x + dx * 20,
-            player_y + dy * 20,
+            player_x - dx * 28.0,
+            player_y - dy * 28.0,
             fp_height
         )
 
@@ -560,9 +563,10 @@ def setupCamera():
     if first_person:
         dx, dy = direction_from_angle(view_angle)
 
+        # Dynamic perspective looking forward over head and gun into arena
         gluLookAt(
             ex, ey, ez,
-            ex + dx * 100, ey + dy * 100, ez,
+            player_x + dx * 150.0, player_y + dy * 150.0, ez - 28.0,
             0, 0, 1
         )
     else:
@@ -609,8 +613,11 @@ def keyboardListener(key, x, y):
     elif key in (b"c", b"C"):
         cheat_mode = not cheat_mode
 
-        if not cheat_mode:
+        if cheat_mode:
+            print("Cheat Mode Enabled")
+        else:
             cheat_follow = False
+            print("Cheat Mode Disabled")
 
     # Toggle cheat camera follow
     # Works only when cheat mode is active
@@ -637,10 +644,10 @@ def specialKeyListener(key, x, y):
     if first_person:
         # In first-person, UP/DOWN adjust eye height
         if key == GLUT_KEY_UP:
-            fp_height = clamp(fp_height + 10, 40, 250)
+            fp_height = clamp(fp_height + 10, 120, 260)
 
         if key == GLUT_KEY_DOWN:
-            fp_height = clamp(fp_height - 10, 40, 250)
+            fp_height = clamp(fp_height - 10, 120, 260)
 
     else:
         # Third-person orbit camera
@@ -674,7 +681,7 @@ def mouseListener(button, state, x, y):
 
         if first_person:
             view_angle = player_angle
-            fp_height = 90.0
+            fp_height = DEFAULT_FP_HEIGHT
 
 def update_view_angle():
     """
@@ -728,10 +735,8 @@ def draw_moving_objects(t):
 
     items = []
 
-    # In first-person mode, suppress drawing the player model directly in front of the camera
-    # to avoid painter's algorithm overdraw without depth buffering
-    if not first_person:
-        items.append((dist2(player_x, player_y), lambda: draw_player()))
+    # Draw player model
+    items.append((dist2(player_x, player_y), lambda: draw_player()))
 
     for e in enemies:
         items.append((dist2(e["x"], e["y"]), lambda e=e: draw_one_enemy(e, t)))
