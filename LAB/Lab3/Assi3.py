@@ -7,9 +7,9 @@ import random
 import time
 
 
-# -----------------------------
+
 # Quadric helper
-# -----------------------------
+
 quadric = None
 
 def get_quadric():
@@ -19,9 +19,9 @@ def get_quadric():
     return quadric
 
 
-# -----------------------------
+
 # Grid / arena constants
-# -----------------------------
+
 GRID_LENGTH = 700
 TILE = 100
 WALL_HEIGHT = 100
@@ -29,9 +29,9 @@ PLAYER_LIMIT = GRID_LENGTH - 40
 ENEMY_COUNT = 5
 
 
-# -----------------------------
+
 # Gameplay constants
-# -----------------------------
+
 MOVE_STEP = 20.0
 TURN_STEP = 15.0
 
@@ -44,27 +44,27 @@ CHEAT_FIRE_COOLDOWN = 0.10
 fovY = 120
 
 
-# -----------------------------
+
 # Player state
-# -----------------------------
+
 player_x = 0.0
 player_y = 0.0
 player_angle = 0.0
 view_angle = 0.0
 
 
-# -----------------------------
+
 # Game status
-# -----------------------------
+
 life = 5
 score = 0
 missed = 0
 game_over = False
 
 
-# -----------------------------
+
 # Cheat / camera modes
-# -----------------------------
+
 cheat_mode = False
 cheat_follow = False
 first_person = False
@@ -77,16 +77,16 @@ DEFAULT_FP_HEIGHT = 180.0
 fp_height = DEFAULT_FP_HEIGHT
 
 
-# -----------------------------
+
 # Game objects
-# -----------------------------
+
 bullets = []
 enemies = []
 
 
-# -----------------------------
+
 # Timing
-# -----------------------------
+
 last_time = time.time()
 last_cheat_shot = 0.0
 game_animation_time = time.time()
@@ -208,9 +208,9 @@ def draw_player():
     if game_over:
         glRotatef(-90, 0, 1, 0)
 
-    # -----------------------------
+    
     # Legs
-    # -----------------------------
+    
     for side in (-1, 1):
         glPushMatrix()
         glTranslatef(0, side * 14, 0)
@@ -218,18 +218,18 @@ def draw_player():
         gluCylinder(get_quadric(), 5, 11, 50, 10, 10)
         glPopMatrix()
 
-    # -----------------------------
+    
     # Body / Torso
-    # -----------------------------
+    
     glPushMatrix()
     glTranslatef(0, 0, 75)
     glColor3f(0.25, 0.3, 0.15)
     cuboid(18, 48, 50)
     glPopMatrix()
 
-    # -----------------------------
+    
     # Gun
-    # -----------------------------
+    
     glPushMatrix()
     glTranslatef(10, 0, 75)
     glRotatef(90, 0, 1, 0)
@@ -237,9 +237,9 @@ def draw_player():
     gluCylinder(get_quadric(), 8, 2, 70, 10, 10)
     glPopMatrix()
 
-    # -----------------------------
+    
     # Hands
-    # -----------------------------
+    
     for side in (-1, 1):
         glPushMatrix()
         glTranslatef(10, side * 20, 80)
@@ -248,9 +248,9 @@ def draw_player():
         gluCylinder(get_quadric(), 8, 3, 40, 10, 10)
         glPopMatrix()
 
-    # -----------------------------
+    
     # Head
-    # -----------------------------
+    
     glPushMatrix()
     glTranslatef(0, 0, 110)
     glColor3f(0, 0, 0)
@@ -366,9 +366,9 @@ def check_collisions(t):
     if game_over:
         return
 
-    # -----------------------------
+    
     # Bullet vs enemy
-    # -----------------------------
+    
     for b in list(bullets):
         bullet_hit = False
 
@@ -392,9 +392,9 @@ def check_collisions(t):
         if bullet_hit:
             continue
 
-    # -----------------------------
+    
     # Enemy vs player
-    # -----------------------------
+    
     for e in list(enemies):
         r = enemy_radius(e, t)
         dist = math.hypot(player_x - e["x"], player_y - e["y"])
@@ -668,23 +668,23 @@ def showScreen():
 
     setupCamera()
 
-    # -----------------------------
+    
     # Static scene
-    # -----------------------------
+    
     draw_grid()
     draw_walls()
 
-    # -----------------------------
+    
     # Moving objects
-    # -----------------------------
+    
     global game_animation_time
     if not game_over:
         game_animation_time = time.time()
     draw_moving_objects(game_animation_time)
 
-    # -----------------------------
+    
     # HUD text
-    # -----------------------------
+    
     if game_over:
         draw_text(10, 770, f"Game is Over. Your Score is {score}.")
         draw_text(10, 740, 'Press "R" to Restart the Game.')
