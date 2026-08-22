@@ -1,6 +1,6 @@
 # CSE423: Computer Graphics
 
-This repository contains comprehensive course materials, assignments, guides, past exam questions, lecture notes, and video tutorials for **CSE423: Computer Graphics** at BRAC University.
+This repository contains lab assignments, implementation guides, starter templates, and past midterm exam questions for **CSE423: Computer Graphics** at BRAC University.
 
 ---
 
@@ -17,8 +17,7 @@ CSE423/
 │   │   │   ├── Assi2.py                      # Task 2: Interactive Bouncing Particles
 │   │   │   ├── Assi2_explained.py            # Task 2 with detailed annotations
 │   │   │   ├── Task1.py / Task1_2.py         # Task 1 alternative implementations
-│   │   │   ├── Task2.py                      # Task 2 alternative implementation
-│   │   │   └── OpenGL/                       # Local patched PyOpenGL library
+│   │   │   └── Task2.py                      # Task 2 alternative implementation
 │   │   ├── First Program/                    # Intro OpenGL scripts
 │   │   │   ├── Hello_openGL.py               # Basic OpenGL window initialization
 │   │   │   └── Lets_draw_sth.py              # Primitive drawing demo
@@ -27,8 +26,7 @@ CSE423/
 │   ├── Lab2/                                 # Lab 02: Midpoint Line Algorithm (2D Game)
 │   │   ├── Assignment/                       # "Catch the Diamonds!" game
 │   │   │   ├── Assi1.py                      # Complete game implementation
-│   │   │   ├── Assi1_explained.py            # Line-by-line annotated implementation
-│   │   │   └── OpenGL/                       # Local patched PyOpenGL library
+│   │   │   └── Assi1_explained.py            # Line-by-line annotated implementation
 │   │   ├── Assignment2_Understanding.md      # Comprehensive deep-dive & theory guide
 │   │   ├── Assignment 2.docx.pdf             # Official lab assignment specification
 │   │   └── Assignment 2.png                  # Assignment specification screenshot
@@ -41,27 +39,11 @@ CSE423/
 │       ├── Assignment 3.pdf                  # Official lab assignment specification
 │       └── Assignment 3.png                  # Assignment specification screenshot
 │
-├── MID questions/                            # Past Midterm Exam Question Papers
-│   ├── 1. CSE423 Spring 2025 Mid Question.pdf
-│   ├── 2. CSE423 Summer 2025 Mid Question.pdf
-│   ├── 3. CSE423 Fall 2025 Mid Question.pdf
-│   └── 4. CSE423 Spring 2026 Mid Question.pdf
-│
-├── Tutul Notes/                              # Lecture notes & scanned problem walkthroughs
-│   └── Projection/                           # 3D Projections (Orthographic, Perspective, Oblique)
-│
-└── Video/                                    # Video tutorials & algorithm walkthroughs
-    ├── Line Drawing Algorithm - DDA
-    ├── Mid Point Line Drawing Algorithm
-    ├── Eight Way Symmetry
-    ├── Mid-Point Circle Drawing Algorithm
-    ├── Transformation in Computer Graphics
-    ├── Composite Transformation & Inverse Composite Transformation
-    ├── Transformation Matrices
-    ├── Cohen Sutherland Line Clipping
-    ├── Cyrus-Beck Algo and Math
-    ├── Line Clipping Algorithms
-    └── Mid Review
+└── MID questions/                            # Past Midterm Exam Question Papers
+    ├── 1. CSE423 Spring 2025 Mid Question.pdf
+    ├── 2. CSE423 Summer 2025 Mid Question.pdf
+    ├── 3. CSE423 Fall 2025 Mid Question.pdf
+    └── 4. CSE423 Spring 2026 Mid Question.pdf
 ```
 
 ---
@@ -173,15 +155,13 @@ freeglut (Assi1.py): failed to open display ''
 ```
 or segmentation faults caused by Homebrew's `freeglut` (which expects an X11 server like XQuartz).
 
-### Included Fix
-The repository includes a patched `OpenGL` package that overrides `OpenGL/platform/darwin.py` to route directly to Apple's native `/System/Library/Frameworks/GLUT.framework/GLUT`.
+### Solution
+Extract the patched `OpenGL` package from `LAB/OpenGL.zip` into the assignment folder to override `darwin.py` and route directly to Apple's native `/System/Library/Frameworks/GLUT.framework/GLUT`:
 
-- Pre-extracted patched `OpenGL/` folders are included in the lab assignment directories.
-- If you ever need to restore the patched bindings, extract them from `LAB/OpenGL.zip`:
-  ```bash
-  cd LAB
-  unzip -o OpenGL.zip
-  ```
+```bash
+cd LAB
+unzip -o OpenGL.zip
+```
 
 ---
 
@@ -198,14 +178,6 @@ Located in [`MID questions/`](file:///Users/dhrubojyoti/Documents/Media/Books/BR
 - Summer 2025 Midterm Exam
 - Fall 2025 Midterm Exam
 - Spring 2026 Midterm Exam
-
-### 📽️ Video Tutorials
-Located in [`Video/`](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/Video):
-- DDA and Midpoint Line Drawing Algorithms
-- 8-Way Symmetry & Midpoint Circle Drawing
-- 2D & 3D Composite Transformations and Matrices
-- Cohen-Sutherland & Cyrus-Beck Line Clipping Algorithms
-- Midterm Exam Review Sessions
 
 ---
 
