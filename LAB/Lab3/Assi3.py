@@ -92,7 +92,7 @@ last_cheat_shot = 0.0
 game_animation_time = time.time()
 
 
-def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
+def sigma_text_display(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
     glColor3f(1, 1, 1)
 
     glMatrixMode(GL_PROJECTION)
@@ -115,14 +115,14 @@ def draw_text(x, y, text, font=GLUT_BITMAP_HELVETICA_18):
     glMatrixMode(GL_MODELVIEW)
 
 
-def cuboid(width, depth, height):
+def cuboid_xl(width, depth, height):
     glPushMatrix()
     glScalef(width, depth, height)
     glutSolidCube(1)
     glPopMatrix()
 
 
-def clamp(value, min_value, max_value):
+def clamp_pro(value, min_value, max_value):
     if value < min_value:
         return min_value
     if value > max_value:
@@ -139,7 +139,7 @@ def gun_direction():
     return direction_from_angle(player_angle)
 
 
-def draw_grid():
+def draw_square_shape():
     tiles_per_side = int((GRID_LENGTH * 2) // TILE)
 
     glBegin(GL_QUADS)
@@ -162,7 +162,7 @@ def draw_grid():
     glEnd()
 
 
-def draw_walls():
+def draw_flat_walls():
     G = GRID_LENGTH
     H = WALL_HEIGHT
 
@@ -195,7 +195,7 @@ def draw_walls():
     glEnd()
 
 
-def draw_player():
+def sigma_player():
     glPushMatrix()
 
     if game_over:
@@ -224,7 +224,7 @@ def draw_player():
     glPushMatrix()
     glTranslatef(0, 0, 75)
     glColor3f(0.25, 0.3, 0.15)
-    cuboid(18, 48, 50)
+    cuboid_xl(18, 48, 50)
     glPopMatrix()
 
     
@@ -260,7 +260,7 @@ def draw_player():
     glPopMatrix()
 
 
-def fire_bullet():
+def og_bullets():
     if game_over:
         return
 
@@ -276,7 +276,7 @@ def fire_bullet():
     print("Player Bullet Fired!")
 
 
-def draw_one_bullet(b):
+def og_one_bullet(b):
     glPushMatrix()
     glTranslatef(b["x"], b["y"], b["z"])
     glColor3f(1, 0, 0)
@@ -284,7 +284,7 @@ def draw_one_bullet(b):
     glPopMatrix()
 
 
-def spawn_enemy():
+def negetive_aura_enemy_spawn():
     while True:
         x = random.uniform(-GRID_LENGTH + 80, GRID_LENGTH - 80)
         y = random.uniform(-GRID_LENGTH + 80, GRID_LENGTH - 80)
@@ -297,18 +297,18 @@ def spawn_enemy():
             }
 
 
-def init_enemies():
+def cj_enemy():
     enemies.clear()
     for _ in range(ENEMY_COUNT):
-        enemies.append(spawn_enemy())
+        enemies.append(negetive_aura_enemy_spawn())
 
 
-def enemy_radius(e, t):
+def fatness_of_enemy(e, t):
     return 40 + 8 * math.sin(t * 2 + e["phase"])
 
 
-def draw_one_enemy(e, t):
-    r = enemy_radius(e, t)
+def one_enemy(e, t):
+    r = fatness_of_enemy(e, t)
 
     glPushMatrix()
 
@@ -332,7 +332,7 @@ def trigger_game_over():
         first_person = False
 
 
-def move_bullets(dt):
+def og_move_bullets(dt):
     global missed
 
     for b in list(bullets):
@@ -360,7 +360,7 @@ def move_enemies(dt):
             e["y"] += (dy / dist) * ENEMY_SPEED * dt
 
 
-def check_collisions(t):
+def cheking_collisions(t):
     global score, life, game_over
 
     if game_over:
@@ -373,7 +373,7 @@ def check_collisions(t):
         bullet_hit = False
 
         for e in list(enemies):
-            r = enemy_radius(e, t)
+            r = fatness_of_enemy(e, t)
             dist = math.hypot(b["x"] - e["x"], b["y"] - e["y"])
 
             if dist <= r + 6:
@@ -384,7 +384,7 @@ def check_collisions(t):
 
                 if e in enemies:
                     enemies.remove(e)
-                    enemies.append(spawn_enemy())
+                    enemies.append(negetive_aura_enemy_spawn())
 
                 bullet_hit = True
                 break
@@ -396,7 +396,7 @@ def check_collisions(t):
     # Enemy vs player
     
     for e in list(enemies):
-        r = enemy_radius(e, t)
+        r = fatness_of_enemy(e, t)
         dist = math.hypot(player_x - e["x"], player_y - e["y"])
 
         if dist <= r + 25:
@@ -405,7 +405,7 @@ def check_collisions(t):
 
             if e in enemies:
                 enemies.remove(e)
-                enemies.append(spawn_enemy())
+                enemies.append(negetive_aura_enemy_spawn())
 
             if life <= 0:
                 life = 0
@@ -416,7 +416,7 @@ def check_collisions(t):
         trigger_game_over()
 
 
-def do_cheat(dt, now):
+def michel_cheatcode(dt, now):
     global player_angle, last_cheat_shot
 
     player_angle = (player_angle + CHEAT_SPIN_SPEED * dt) % 360
@@ -432,18 +432,18 @@ def do_cheat(dt, now):
             if dist < 1:
                 continue
 
-            r = enemy_radius(e, now)
+            r = fatness_of_enemy(e, now)
             required_alignment = dist / math.hypot(dist, r)
 
             alignment = (ex / dist) * dx + (ey / dist) * dy
 
             if alignment >= required_alignment:
-                fire_bullet()
+                og_bullets()
                 last_cheat_shot = now
                 break
 
 
-def restart():
+def restart_the_game():
     global life, score, missed, game_over
     global player_x, player_y, player_angle, view_angle
     global cheat_mode, cheat_follow, first_person
@@ -471,7 +471,7 @@ def restart():
     last_cheat_shot = 0.0
 
     bullets.clear()
-    init_enemies()
+    cj_enemy()
     print(f"Remaining player life: {life}")
 
 
@@ -522,7 +522,7 @@ def keyboardListener(key, x, y):
     global cheat_mode, cheat_follow, view_angle
 
     if key in (b"r", b"R"):
-        restart()
+        restart_the_game()
         return
 
     if game_over:
@@ -557,8 +557,8 @@ def keyboardListener(key, x, y):
         if cheat_mode:
             cheat_follow = not cheat_follow
 
-    player_x = clamp(player_x, -PLAYER_LIMIT, PLAYER_LIMIT)
-    player_y = clamp(player_y, -PLAYER_LIMIT, PLAYER_LIMIT)
+    player_x = clamp_pro(player_x, -PLAYER_LIMIT, PLAYER_LIMIT)
+    player_y = clamp_pro(player_y, -PLAYER_LIMIT, PLAYER_LIMIT)
 
     if first_person and ((not cheat_mode) or cheat_follow):
         view_angle = player_angle
@@ -572,10 +572,10 @@ def specialKeyListener(key, x, y):
 
     if first_person:
         if key == GLUT_KEY_UP:
-            fp_height = clamp(fp_height + 10, 120, 260)
+            fp_height = clamp_pro(fp_height + 10, 120, 260)
 
         if key == GLUT_KEY_DOWN:
-            fp_height = clamp(fp_height - 10, 120, 260)
+            fp_height = clamp_pro(fp_height - 10, 120, 260)
 
     else:
         if key == GLUT_KEY_LEFT:
@@ -585,10 +585,10 @@ def specialKeyListener(key, x, y):
             camera_angle += 5
 
         if key == GLUT_KEY_UP:
-            camera_height = clamp(camera_height + 20, 150, 1500)
+            camera_height = clamp_pro(camera_height + 20, 150, 1500)
 
         if key == GLUT_KEY_DOWN:
-            camera_height = clamp(camera_height - 20, 150, 1500)
+            camera_height = clamp_pro(camera_height - 20, 150, 1500)
 
 
 def mouseListener(button, state, x, y):
@@ -598,7 +598,7 @@ def mouseListener(button, state, x, y):
         return
 
     if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN:
-        fire_bullet()
+        og_bullets()
 
     if button == GLUT_RIGHT_BUTTON and state == GLUT_DOWN:
         first_person = not first_person
@@ -616,7 +616,7 @@ def update_view_angle():
             view_angle = player_angle
 
 
-def idle():
+def lazy():
     global last_time
 
     now = time.time()
@@ -627,12 +627,12 @@ def idle():
         dt = 0.1
 
     if not game_over:
-        move_bullets(dt)
+        og_move_bullets(dt)
         move_enemies(dt)
-        check_collisions(now)
+        cheking_collisions(now)
 
         if cheat_mode:
-            do_cheat(dt, now)
+            michel_cheatcode(dt, now)
 
         update_view_angle()
 
@@ -647,13 +647,13 @@ def draw_moving_objects(t):
 
     items = []
 
-    items.append((dist2(player_x, player_y), lambda: draw_player()))
+    items.append((dist2(player_x, player_y), lambda: sigma_player()))
 
     for e in enemies:
-        items.append((dist2(e["x"], e["y"]), lambda e=e: draw_one_enemy(e, t)))
+        items.append((dist2(e["x"], e["y"]), lambda e=e: one_enemy(e, t)))
 
     for b in bullets:
-        items.append((dist2(b["x"], b["y"]), lambda b=b: draw_one_bullet(b)))
+        items.append((dist2(b["x"], b["y"]), lambda b=b: og_one_bullet(b)))
 
     items.sort(key=lambda item: item[0], reverse=True)
 
@@ -661,21 +661,16 @@ def draw_moving_objects(t):
         draw_function()
 
 
-def showScreen():
+def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     glViewport(0, 0, 1000, 800)
 
     setupCamera()
 
-    
-    # Static scene
-    
-    draw_grid()
-    draw_walls()
+    draw_square_shape()
+    draw_flat_walls()
 
-    
-    # Moving objects
     
     global game_animation_time
     if not game_over:
@@ -683,35 +678,29 @@ def showScreen():
     draw_moving_objects(game_animation_time)
 
     
-    # HUD text
-    
     if game_over:
-        draw_text(10, 770, f"Game is Over. Your Score is {score}.")
-        draw_text(10, 740, 'Press "R" to Restart the Game.')
+        sigma_text_display(10, 770, f"Game is Over. Your Score is {score}.")
+        sigma_text_display(10, 740, 'Press "R" to Restart the Game.')
     else:
-        draw_text(10, 770, f"Player Life Remaining: {life}")
-        draw_text(10, 740, f"Game Score: {score}")
-        draw_text(10, 710, f"Player Bullet Missed: {missed}")
+        sigma_text_display(10, 770, f"Player Life Remaining: {life}")
+        sigma_text_display(10, 740, f"Game Score: {score}")
+        sigma_text_display(10, 710, f"Player Bullet Missed: {missed}")
 
     glutSwapBuffers()
 
 
 def main():
-    init_enemies()
-
+    cj_enemy()
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH)
     glutInitWindowSize(1000, 800)
     glutInitWindowPosition(0, 0)
-
     wind = glutCreateWindow(b"Bullet Frenzy")
-
-    glutDisplayFunc(showScreen)
+    glutDisplayFunc(display)
     glutKeyboardFunc(keyboardListener)
     glutSpecialFunc(specialKeyListener)
     glutMouseFunc(mouseListener)
-    glutIdleFunc(idle)
-
+    glutIdleFunc(lazy)
     glutMainLoop()
 
 
