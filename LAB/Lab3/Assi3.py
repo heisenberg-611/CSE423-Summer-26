@@ -658,7 +658,7 @@ def draw_moving_objects(t):
     items.sort(key=lambda item: item[0], reverse=True)
 
     for _, draw_function in items:
-        draw_function
+        draw_function()
 
 
 def display():
