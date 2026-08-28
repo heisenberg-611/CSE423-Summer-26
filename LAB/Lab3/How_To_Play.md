@@ -1,6 +1,6 @@
 # Cooking Academy 3D — Complete Gameplay & Keybindings Guide
 
-A comprehensive guide explaining all controls, keybindings, kitchen stations, minigames, cooking timers, and a complete step-by-step walkthrough for all 3 Levels in **Cooking Academy 3D** ([Tutul.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul.py)).
+A comprehensive guide explaining all controls, keybindings, kitchen stations, minigames, cooking timers, foolproof game logic, burnt food recovery, and a complete step-by-step walkthrough for all 3 Levels in **Cooking Academy 3D** ([Tutul.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul.py) & [Tutul1.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul1.py)).
 
 ---
 
@@ -17,7 +17,7 @@ A comprehensive guide explaining all controls, keybindings, kitchen stations, mi
 | **`Q`** | **Chop / Cut Knife Action** | Performs knife chop in cutting minigames (Vegetables, Potato Strips, Sausage) |
 | **`F`** or **`Right Click`** | **Toggle Camera View** | Switches between **First-Person (Chef POV)** and **Third-Person** camera |
 | **`R`** | **Remove Wrong Ingredients** | Discards wrong/unwanted items from your 3-slot inventory |
-| **`1`** | **Restart / Reset Game** | Resets game, scores, stations, and inventory back to Level 1 |
+| **`1`** | **Full Game Reset / Restart** | Cleanly wipes all scores, timers, stations, and inventory back to Level 1 initial state |
 | **`2`** | **Start Level 2** | Starts Level 2 (Burger & Fries) when Level 1 is cleared |
 | **`3`** | **Start Level 3** | Starts Level 3 (Pizza Preparation) when Level 2 is cleared |
 | **`Arrow Up / Down`** | **Camera Height** | Raises / lowers camera height in Third-Person mode |
@@ -66,11 +66,36 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 | **Baking Oven (Pizza Baking)**| **8.0 Seconds** | **-10 pts** (4.8s / raw dough) | **+30 pts** (4.8s – 9.2s / bubbly crust & melted cheese) | **-20 pts** (pizza burnt) |
 
 > [!TIP]
-> **Live Floating 3D Badges:** While cooking, live timer badges float directly above the cooking stations (e.g. `PATTY FRYING: 65% (5.2s / 8.0s)` or `FRYER SIZZLING: 72% (5.0s / 7.0s)`), and the HUD displays real-time seconds remaining!
+> **Live Floating 3D Badges:** While cooking, live timer badges float directly above the cooking stations (e.g. `PATTY FRYING: 65% (5.2s / 8.0s)` or `FRYER SIZZLING: 72% (5.0s / 7.0s)`), and the HUD displays real-time percentages and stage prompts!
 
 ---
 
-## 4. Step-by-Step Level Walkthrough
+## 4. Foolproof Game Logic & Rules
+
+### 1. Game Reset (`1` Key)
+- Pressing **`1`** at any time performs a **clean global re-initialization**:
+  - Resets all scores (Total Score, Collection, Matching, Cutting, Cooking, L2 Frying, L2 Assembly, L2 Fries, L3 scores) back to `0`.
+  - Resets player position to `[0, -1200, 0]` and camera back to Third-Person.
+  - Clears all station timers, boiling pots, deep fryers, and oven baking states.
+  - Clears all inventory sets, burger layers, dough mixing counts, and cut counters.
+  - Returns game stage to `STATE_COLLECTING` (Level 1).
+
+### 2. Level Progression Guards (`2` & `3` Keys)
+- **Level 2 (`2` Key):** Can only be started when Level 1 is cleared (`STATE_LEVEL_COMPLETE`). Pressing `2` prematurely displays a prompt: *"Level 2 is locked! Complete Level 1 first."*
+- **Level 3 (`3` Key):** Can only be started when Level 2 is cleared (`STATE_L2_COMPLETE`). Pressing `3` prematurely displays a prompt: *"Level 3 is locked! Complete Level 2 first."*
+
+### 3. Burnt Food Recovery & Retry System
+Never get stuck if your dish burns:
+- **Burnt Patty (>115%):** Patty is cleared from the stove, `has_frozen_patty` is reset to `False`, and `"Frozen Patty"` is removed from inventory. You can immediately walk back to the Storage Table crate, collect a new Frozen Patty, and place it on the pan to retry frying.
+- **Burnt French Fries (>115% or Quality $\le 0\%$):** Fryer and boiling states are cleared, `has_potato` and `potato_cut_done` are reset to `False`, and `"Potato"` is removed from inventory. You can collect a new Potato from the Storage Table to chop, boil, and fry again.
+- **Burnt Pizza (>115%):** Oven state is cleared, dough and sausage states are reset, and the game returns to `STATE_L3_COLLECTING_SAUSAGE`, allowing you to collect a new Sausage and remake the pizza.
+
+### 4. Level 2 Completion Requirement
+- Level 2 is completed **only** when **both** the Burger and the French Fries have been carried to and placed on the **Plating Station** (`burger_plated and fries_plated`). Finishing Burger Assembly at the Prep Table sets `burger_ready = True` so you can carry it to the plate!
+
+---
+
+## 5. Step-by-Step Level Walkthrough
 
 ---
 
@@ -97,7 +122,7 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 #### Step 3: Plating the Salad
 1. Walk to the **Plating Station** (`(2000, 0)`).
 2. Press **`E`** or **Left Click** **3 times** to plate the salad portions (+35 pts).
-3. **Level 1 Complete!** Press **`2`** to start Level 2.
+3. **Level 1 Complete!** The Level 1 Completion Modal appears with score breakdown. Press **`2`** to start Level 2.
 
 ---
 
@@ -108,18 +133,19 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 2. Go to the **Cutting Station**, press **`E`** / **Left Click** to enter cutting view, then press **`Q`** 4 times to cut into strips (+35 pts).
 3. Walk to the **Stove Station** (`(0, -2000)`) and press **`E`** / **Left Click** on the pot to boil the strips.
 4. Watch the pot boil to **100%** / 6.0s (+20 pts).
-5. Carry the boiled strips to the **Deep Fryer** (`(1000, -2000)`) and press **`E`** / **Left Click** to start deep frying:
-   - Hot oil bubbles and steam rises as the **7.0s Frying Timer** starts ticking.
-   - Play the **Frying Direction Mini-Game**: press matching **Arrow Keys** (`↑`, `→`, `↓`, `←`), **WASD**, or click the screen to keep quality at 100%.
-   - When the timer reaches the **60% – 115% sweet spot** (4.2s – 8.0s), press **`E`** or **Left Click** to lift the golden crispy fries out (+35 pts)!
+5. Carry the boiled strips to the **Deep Fryer** (`(1000, -2000)`) and press **`E`** / **Space** / **Left Click** to lower the basket into the oil:
+   - Hot oil bubbles and steam rises as the **7.0s Frying Timer** starts ticking with a dedicated top-down fryer camera.
+   - Play the **Frying Direction Mini-Game**: press matching **WASD** (`W`, `A`, `S`, `D`), **Arrow Keys** (`↑`, `→`, `↓`, `←`), or click the screen arrows to match the 6 target directions (+5 pts each).
+   - When the timer reaches the **60% – 115% sweet spot** (4.2s – 8.0s), press **`E`** or **Space** to lift the basket and pull the golden crispy fries out (+35 pts)!
+   - *Note:* If you complete all 6 directions while in the sweet spot, the fries are automatically pulled perfectly!
 
 #### Step 2: Fry the Burger Patty
 1. Collect the **Frozen Patty** from the Storage Table.
-2. Go to the **Stove Station** (`(0, -2000)`) and press **`E`** / **Left Click** to place the patty into the frying pan.
-3. Watch the pan sizzle with steam as the **8.0s Patty Timer** ticks:
-   - **0% – 59% (Undercooked):** Leave it on the pan.
-   - **60% – 115% (PERFECT SWEET SPOT / 4.8s – 9.2s):** Press **`E`** or **Left Click** to pull the cooked patty (+25 pts)!
-   - **>115% (BURNT):** Patty burns to ash (-20 pts penalty; collect a new patty).
+2. Go to the **Stove Station** (`(0, -2000)`) and press **`E`** / **Space** / **Left Click** to place the patty into the left frying pan.
+3. The patty sizzles continuously on the pan as the **8.0s Continuous Patty Timer** progresses:
+   - **0% – 59% (Sizzling):** Sizzling in pan. (No directional arrow needed for Patty — directional matching is for French Fries!).
+   - **60% – 115% (PERFECT SWEET SPOT / 4.8s – 9.2s):** Patty turns golden-brown. Press **`E`**, **`Space`**, or **Left Click** to flip and pull the cooked patty onto your plate (+25 pts)!
+   - **>115% (BURNT):** Patty burns to charcoal (-20 pts penalty; collect a new patty from Storage to retry).
 
 #### Step 3: Burger Assembly
 1. Collect burger ingredients from Storage Table:
@@ -138,7 +164,7 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 1. Walk to the **Plating Station** (`(2000, 0)`).
 2. Press **`E`** / **Left Click** to plate the Burger (+15 pts).
 3. Press **`E`** / **Left Click** to plate the French Fries (+15 pts).
-4. **Level 2 Complete!** (+30 bonus pts). Press **`3`** to start Level 3.
+4. **Level 2 Complete!** The Level 2 Completion Modal appears (+30 bonus pts). Press **`3`** to start Level 3.
 
 ---
 
@@ -166,12 +192,12 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 3. The oven glows bright orange as the **8.0s Baking Timer** starts:
    - **0% – 59% (Raw):** Leave in oven.
    - **60% – 115% (GOLDEN BAKED READY / 4.8s – 9.2s):** Press **`E`** or **Left Click** to remove the bubbly pizza (+30 pts)!
-   - **>115% (BURNT):** Pizza burns to charcoal (-20 pts penalty).
-4. **Level 3 Complete! CONGRATULATIONS CHEF — GAME VICTORY!**
+   - **>115% (BURNT):** Pizza burns to charcoal (-20 pts penalty; collect a new Sausage from Storage to retry).
+4. **Level 3 Complete! CONGRATULATIONS CHEF — GAME VICTORY!** The Master Chef Victory Modal displays your final score. Press **`1`** to replay from Level 1.
 
 ---
 
-## 5. Scoring & Penalty Table
+## 6. Scoring & Penalty Table
 
 | Action | Score Change |
 | :--- | :--- |
@@ -190,10 +216,20 @@ Cooking in **Cooking Academy 3D** uses real-time continuous timers with sweet-sp
 
 ---
 
-## 6. Pro Tips for High Score
+## 7. High-Contrast 2D UI & HUD System
+
+The game features dedicated high-contrast HUD backdrop cards:
+1. **Top-Left Status Card:** Displays current **Level**, **Score**, **Stage**, and active **Station Proximity / Timers**.
+2. **Top-Right Goals & Checklist Card:** Shows active recipe objectives with live **`[✓]`** checkmarks and progress counters.
+3. **Bottom Notification Bar:** Displays the latest 3 game events, score feedback, and station instructions.
+4. **Level Completion Modals:** Full-screen dimming overlay + centered gold-bordered score dialog with itemized category breakdowns and action prompts.
+
+---
+
+## 8. Pro Tips for High Score
 
 1. **Use `E` / `Space` for Rapid Kitchen Navigation:** Keep your left hand over `W/A/S/D` and tap `E` with your index finger or `Space` with your thumb to interact with stations effortlessly without reaching for the mouse.
 2. **Watch the 3D Live Timer Badges:** Check the real-time badges floating over the Deep Fryer, Stove, and Oven to multitask across stations without burning your food.
 3. **Toggle First-Person (`F`):** Use Third-Person for moving around the kitchen, and press `F` for immersive First-Person view when chopping, frying, and assembling.
 4. **Clean Inventory Fast (`R`):** If you accidentally pick up unneeded items, tap **`R`** to clear wrong items instantly.
-5. **Screen Resolution:** If the window is too large or small for your screen, adjust `WINDOW_WIDTH` and `WINDOW_HEIGHT` at the top of [Tutul.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul.py#L20-L21) (see [Resolution_Guide.md](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Resolution_Guide.md)).
+5. **Screen Resolution:** If the window is too large or small for your screen, adjust `WINDOW_WIDTH` and `WINDOW_HEIGHT` at the top of [Tutul.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul.py#L19-L20) or [Tutul1.py](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Tutul1.py#L19-L20) (see [Resolution_Guide.md](file:///Users/dhrubojyoti/Documents/Media/Books/BRACU/8th%20Semester/CSE423/LAB/Lab3/Resolution_Guide.md)).
