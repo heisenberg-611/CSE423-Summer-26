@@ -130,6 +130,7 @@ KNIFE_ANIM_DURATION = 0.3
 FRYING_DURATION = 8.0  # seconds to reach 100% cooked state
 BOILING_DURATION = 6.0  # seconds to reach 100% boiled state
 PIZZA_BAKING_DURATION = 8.0  # seconds to reach 100% baked state
+FRIES_FRYING_DURATION = 7.0  # seconds to reach 100% crispy french fries
 
 BURGER_STEPS = ["Bottom Bun", "Cooked Patty", "Cheese", "Tomato", "Cucumber", "Top Bun"]
 FRIES_TARGET_SEQUENCE = ['→', '↑', '←', '↓', '→', '↑']
@@ -207,6 +208,8 @@ potato_boil_start = 0.0
 potato_boil_progress = 0
 potato_boiled = False
 fries_frying_active = False
+fries_frying_start = 0.0
+fries_progress = 0
 fries_target_index = 0
 fries_quality = 100
 fries_ready = False
@@ -409,9 +412,9 @@ def draw_text(x, y, text, r=1.0, g=1.0, b=1.0, font=GLUT_BITMAP_HELVETICA_18):
     glMatrixMode(GL_MODELVIEW)
 
 
-def draw_label_3d(x, y, z, text, font=GLUT_BITMAP_HELVETICA_12):
+def draw_label_3d(x, y, z, text, font=GLUT_BITMAP_HELVETICA_18, r=1.0, g=1.0, b=1.0):
     """Render floating text label anchored at 3D world position (x, y, z)."""
-    glColor3f(1.0, 1.0, 1.0)
+    glColor3f(r, g, b)
     glPushMatrix()
     glTranslatef(x, y, z)
     glRasterPos2f(0, 0)
@@ -491,15 +494,18 @@ def draw_room_walls():
 
 
 def draw_ingredient_storage_table():
-    """Draws a long storage table with 5 separated baskets containing multiple ingredient items (visually persistent)."""
+    """Draws a long storage table with separated baskets containing multiple ingredient items (visually persistent)."""
     tx, ty = -2000, -1000
 
     # Wooden storage tabletop & frame
-    draw_cube(tx, ty, 60, 160, 1100, 110, *PALETTE["wood"])
-    draw_cube(tx, ty, 120, 180, 1120, 16, *PALETTE["cream"])
-    draw_label_3d(tx - 120, ty, 280, "STORAGE TABLE")
+    draw_cube(tx, ty, 60, 160, 1900, 110, *PALETTE["wood"])
+    draw_cube(tx, ty, 120, 180, 1920, 16, *PALETTE["cream"])
+    # 3D Storage Table Name Badge
+    draw_cube(tx, ty, 285, 340, 20, 44, 0.11, 0.14, 0.16)
+    draw_cube(tx, ty, 285, 348, 16, 48, 0.85, 0.68, 0.28)
+    draw_label_3d(tx - 110, ty - 12, 278, "STORAGE TABLE", GLUT_BITMAP_HELVETICA_18, 1.0, 0.95, 0.8)
 
-    # Render 5 separated baskets along the storage tabletop
+    # Render separated baskets along the storage tabletop
     for name, info in INGREDIENT_POSITIONS.items():
         bx, by = info["pos"][0], info["pos"][1]
         bz = 135
@@ -513,10 +519,15 @@ def draw_ingredient_storage_table():
         for ox, oy in ((-20, -20), (20, -20), (-20, 20), (20, 20)):
             if info["shape"] == "cylinder":
                 draw_cylinder(bx + ox, by + oy, bz + 18, 12, 35, r, g, b)
+            elif info["shape"] == "cube":
+                draw_cube(bx + ox, by + oy, bz + 24, 20, 20, 18, r, g, b)
             else:
                 draw_sphere(bx + ox, by + oy, bz + 28, 15, r, g, b)
         draw_marker(bx, by, bz + 85, 1.0, 0.8, 0.2, 25)
-        draw_label_3d(bx - len(name) * 3.5, by, bz + 125, name)
+        # High-contrast 3D name badge for each ingredient
+        badge_w = len(name) * 14.0 + 20.0
+        draw_cube(bx, by, bz + 125, badge_w, 14, 28, 0.12, 0.15, 0.18)
+        draw_label_3d(bx - (badge_w / 2.0) + 8, by - 8, bz + 120, name, GLUT_BITMAP_HELVETICA_18, 1.0, 0.95, 0.6)
 
 
 def draw_cutting_station_content():
@@ -984,6 +995,26 @@ def draw_pizza_oven_content():
         draw_cylinder(ox - 65, oy, 176, 44, 4, 0.95, 0.85, 0.15)
 
 
+def draw_fryer_content():
+    """Draws deep fryer interior, bubbling hot oil, fryer baskets, and sizzling french fries at the Fryer Station."""
+    fx, fy = STATIONS["fryer"]
+
+    # Sizzling golden french fries inside the fryer baskets when fries are frying or ready
+    if potato_boiled or fries_frying_active or fries_ready:
+        # Golden fries in both baskets
+        for bx in (-65, 65):
+            for ox, oy in ((-20, -15), (10, 15), (-10, 20), (18, -10), (0, 0)):
+                draw_cube(fx + bx + ox, fy + oy, 240, 14, 48, 12, 0.95, 0.78, 0.15)
+
+        # Sizzling bubbles and steam when deep frying
+        if fries_frying_active:
+            t_now = time.time()
+            for bx in (-65, 65):
+                for i, (ox, oy) in enumerate(((-18, -15), (15, 15), (-8, 20), (18, -8))):
+                    b_z = 245 + ((t_now * 50 + i * 15) % 40)
+                    draw_sphere(fx + bx + ox, fy + oy, b_z, 7, 0.96, 0.92, 0.5)
+
+
 def draw_kitchen_props():
     for name in STATIONS:
         draw_station_prop(name)
@@ -993,6 +1024,7 @@ def draw_kitchen_props():
     draw_stove_frying_content()
     draw_boiling_pot_content()
     draw_fries_frying_pan_content()
+    draw_fryer_content()
     draw_burger_assembly_content()
     draw_sausage_cutting_content()
     draw_dough_mixing_content()
@@ -1005,11 +1037,80 @@ def draw_kitchen_props():
 
 
 def draw_station_labels():
-    """Draw floating name labels anchored in 3D above every kitchen station."""
+    """Draw high-contrast floating nameplates and live timer badges above every kitchen station."""
+    now = time.time()
     for name, (sx, sy) in STATIONS.items():
         label = STATION_DISPLAY_NAMES.get(name, name.upper())
-        offset = len(label) * 8.0
-        draw_label_3d(sx - offset, sy, 340, label)
+        # Width calculation for text centering
+        text_w = len(label) * 16.0
+
+        # 3D dark nameplate backing badge with golden trim
+        draw_cube(sx, sy, 370, text_w + 50, 18, 44, 0.11, 0.14, 0.16)
+        draw_cube(sx, sy, 370, text_w + 58, 14, 48, 0.85, 0.68, 0.28)
+        draw_label_3d(sx - (text_w / 2.0) + 4, sy - 10, 362, label, GLUT_BITMAP_HELVETICA_18, 1.0, 0.96, 0.82)
+
+        # Dynamic live status & timer badges for active cooking stations
+        if name in ("stove", "fryer"):
+            if name == "stove" and potato_boiling and potato_boil_progress < 100:
+                elapsed = now - potato_boil_start
+                b_text = f"POT BOILING: {potato_boil_progress}% ({elapsed:.1f}s / {BOILING_DURATION:.1f}s)"
+                bw = len(b_text) * 15.0
+                draw_cube(sx, sy, 435, bw + 40, 18, 36, 0.15, 0.30, 0.45)
+                draw_label_3d(sx - (bw / 2.0), sy - 10, 428, b_text, GLUT_BITMAP_HELVETICA_18, 0.4, 0.85, 1.0)
+            elif name == "stove" and patty_on_stove:
+                elapsed = now - patty_frying_start
+                if 60 <= patty_progress <= 115:
+                    p_text = f"PATTY READY! {patty_progress}% ({elapsed:.1f}s / {FRYING_DURATION:.1f}s)"
+                    pw = len(p_text) * 15.0
+                    draw_cube(sx, sy, 435, pw + 40, 18, 36, 0.12, 0.42, 0.15)
+                    draw_label_3d(sx - (pw / 2.0), sy - 10, 428, p_text, GLUT_BITMAP_HELVETICA_18, 0.3, 1.0, 0.3)
+                elif patty_progress > 115:
+                    p_text = "PATTY BURNT! (-20 pts)"
+                    pw = len(p_text) * 15.0
+                    draw_cube(sx, sy, 435, pw + 40, 18, 36, 0.5, 0.1, 0.1)
+                    draw_label_3d(sx - (pw / 2.0), sy - 10, 428, p_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.3, 0.3)
+                else:
+                    p_text = f"PATTY FRYING: {patty_progress}% ({elapsed:.1f}s / {FRYING_DURATION:.1f}s)"
+                    pw = len(p_text) * 15.0
+                    draw_cube(sx, sy, 435, pw + 40, 18, 36, 0.45, 0.25, 0.08)
+                    draw_label_3d(sx - (pw / 2.0), sy - 10, 428, p_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.75, 0.2)
+
+            if name == "fryer" and (fries_frying_active or (potato_boiled and not fries_ready)):
+                if fries_frying_active:
+                    elapsed = now - fries_frying_start
+                    if 60 <= fries_progress <= 115:
+                        f_text = f"FRIES READY! {fries_progress}% ({elapsed:.1f}s / {FRIES_FRYING_DURATION:.1f}s)"
+                        fw = len(f_text) * 15.0
+                        draw_cube(sx, sy, 435, fw + 40, 18, 36, 0.12, 0.42, 0.15)
+                        draw_label_3d(sx - (fw / 2.0), sy - 10, 428, f_text, GLUT_BITMAP_HELVETICA_18, 0.3, 1.0, 0.3)
+                    elif fries_progress > 115:
+                        f_text = "FRIES BURNT! (-20 pts)"
+                        fw = len(f_text) * 15.0
+                        draw_cube(sx, sy, 435, fw + 40, 18, 36, 0.5, 0.1, 0.1)
+                        draw_label_3d(sx - (fw / 2.0), sy - 10, 428, f_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.3, 0.3)
+                    else:
+                        f_text = f"FRYER SIZZLING: {fries_progress}% ({elapsed:.1f}s / {FRIES_FRYING_DURATION:.1f}s)"
+                        fw = len(f_text) * 15.0
+                        draw_cube(sx, sy, 435, fw + 40, 18, 36, 0.45, 0.30, 0.08)
+                        draw_label_3d(sx - (fw / 2.0), sy - 10, 428, f_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.85, 0.2)
+
+        elif name == "oven" and pizza_in_oven:
+            elapsed = now - pizza_baking_start
+            if 60 <= pizza_baking_progress <= 115:
+                o_text = f"PIZZA BAKED! {pizza_baking_progress}% ({elapsed:.1f}s / {PIZZA_BAKING_DURATION:.1f}s)"
+                ow = len(o_text) * 15.0
+                draw_cube(sx, sy, 435, ow + 40, 18, 36, 0.12, 0.42, 0.15)
+                draw_label_3d(sx - (ow / 2.0), sy - 10, 428, o_text, GLUT_BITMAP_HELVETICA_18, 0.3, 1.0, 0.3)
+            elif pizza_baking_progress > 115:
+                o_text = "PIZZA BURNT! (-20 pts)"
+                ow = len(o_text) * 15.0
+                draw_cube(sx, sy, 435, ow + 40, 18, 36, 0.5, 0.1, 0.1)
+                draw_label_3d(sx - (ow / 2.0), sy - 10, 428, o_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.3, 0.3)
+            else:
+                o_text = f"PIZZA BAKING: {pizza_baking_progress}% ({elapsed:.1f}s / {PIZZA_BAKING_DURATION:.1f}s)"
+                ow = len(o_text) * 15.0
+                draw_cube(sx, sy, 435, ow + 40, 18, 36, 0.45, 0.22, 0.08)
+                draw_label_3d(sx - (ow / 2.0), sy - 10, 428, o_text, GLUT_BITMAP_HELVETICA_18, 1.0, 0.75, 0.2)
 
 
 def draw_player():
@@ -1470,48 +1571,69 @@ def draw_hud():
             else:
                 draw_text(10, 650, "PLATING STATION: LOCKED", 1.0, 0.3, 0.3)
 
-    # --- Stove Station Instructions ---
+    # --- Stove Station Instructions & Live Timers ---
     if player_near_station("stove"):
         if potato_cut_done and not potato_boiling and not potato_boiled:
-            draw_text(10, 650, "STOVE POT: Left Click to Boil Potato Strips", 1.0, 0.85, 0.2)
-        elif potato_boiling:
-            draw_text(10, 650, "BOILING POTATO STRIPS: %d%%" % potato_boil_progress, 1.0, 0.85, 0.2)
-        elif potato_boiled and not fries_ready:
-            draw_text(10, 650, "FRYING PAN: Left Click to Start 4-Direction Frying", 1.0, 0.85, 0.2)
+            draw_text(10, 650, "STOVE POT: Left Click / E to Boil Potato Strips", 1.0, 0.85, 0.2)
+        elif potato_boiling and not potato_boiled:
+            elapsed = time.time() - potato_boil_start
+            draw_text(10, 650, f"BOILING POTATO STRIPS: {potato_boil_progress}% | Timer: {elapsed:.1f}s / {BOILING_DURATION:.1f}s", 0.4, 0.9, 1.0)
         elif patty_on_stove or patty_state == PATTY_STATE_FRYING:
-            draw_text(10, 650, "PATTY Frying: %d%%" % min(100, patty_progress), 1.0, 0.85, 0.2)
+            elapsed = time.time() - patty_frying_start
             if 60 <= patty_progress <= 115:
-                draw_text(10, 625, "PATTY READY (Left Click to Remove)", 0.3, 1.0, 0.3)
+                draw_text(10, 650, f"PATTY READY! {patty_progress}% | Timer: {elapsed:.1f}s / {FRYING_DURATION:.1f}s (Click / E to Remove)", 0.3, 1.0, 0.3)
             elif patty_progress > 115:
-                draw_text(10, 625, "PATTY BURNT! (Left Click to Clear)", 1.0, 0.3, 0.3)
+                draw_text(10, 650, f"PATTY BURNT! {patty_progress}% | Timer: {elapsed:.1f}s (Click / E to Clear)", 1.0, 0.3, 0.3)
             else:
-                draw_text(10, 625, "Frying in progress... (Left Click to remove)", 0.9, 0.9, 0.9)
+                draw_text(10, 650, f"PATTY FRYING: {patty_progress}% | Timer: {elapsed:.1f}s / {FRYING_DURATION:.1f}s (Sweet spot: 60-115%)", 1.0, 0.85, 0.2)
         elif not has_cooked_patty and has_frozen_patty:
-            draw_text(10, 650, "STOVE: Left Click to Place Frozen Patty", 1.0, 0.85, 0.2)
+            draw_text(10, 650, "STOVE PAN: Left Click / E to Place Frozen Patty to Fry", 1.0, 0.85, 0.2)
+        elif potato_boiled and not fries_ready:
+            draw_text(10, 650, "STOVE / FRYER: Left Click / E to Lower Strips into Deep Fryer", 1.0, 0.85, 0.2)
+
+    # --- Deep Fryer Station Instructions & Live Timers ---
+    if player_near_station("fryer"):
+        if potato_boiled and not fries_ready:
+            if not fries_frying_active:
+                draw_text(10, 650, "DEEP FRYER: Left Click / E to Lower Strips into Fryer Basket", 1.0, 0.85, 0.2)
+            else:
+                elapsed = time.time() - fries_frying_start
+                if 60 <= fries_progress <= 115:
+                    draw_text(10, 650, f"FRIES READY! {fries_progress}% | Timer: {elapsed:.1f}s / {FRIES_FRYING_DURATION:.1f}s (Click / E to Remove)", 0.3, 1.0, 0.3)
+                elif fries_progress > 115:
+                    draw_text(10, 650, f"FRIES BURNT! {fries_progress}% | Timer: {elapsed:.1f}s (Click / E to Clear)", 1.0, 0.3, 0.3)
+                else:
+                    draw_text(10, 650, f"DEEP FRYER SIZZLING: {fries_progress}% | Timer: {elapsed:.1f}s / {FRIES_FRYING_DURATION:.1f}s (Sweet spot: 60-115%)", 1.0, 0.85, 0.2)
+        elif fries_ready:
+            draw_text(10, 650, "DEEP FRYER: French Fries Ready! Plate them at Plating Station", 0.3, 1.0, 0.3)
+        elif not potato_boiled:
+            draw_text(10, 650, "DEEP FRYER: Boil Potato Strips in Stove Pot first!", 0.9, 0.9, 0.9)
 
     # --- Oven Station Instructions ---
     if player_near_station("oven"):
         if game_state == STATE_L3_BAKING or pizza_in_oven:
             if pizza_in_oven:
-                draw_text(10, 650, "PIZZA BAKING: %d%%" % min(100, pizza_baking_progress), 1.0, 0.85, 0.2)
+                elapsed = time.time() - pizza_baking_start
                 if 60 <= pizza_baking_progress <= 115:
-                    draw_text(10, 625, "PIZZA READY (Left Click to Remove)", 0.3, 1.0, 0.3)
+                    draw_text(10, 650, f"PIZZA READY! {pizza_baking_progress}% | Timer: {elapsed:.1f}s / {PIZZA_BAKING_DURATION:.1f}s (Click / E to Remove)", 0.3, 1.0, 0.3)
                 elif pizza_baking_progress > 115:
-                    draw_text(10, 625, "PIZZA BURNT! (Left Click to Clear)", 1.0, 0.3, 0.3)
+                    draw_text(10, 650, f"PIZZA BURNT! {pizza_baking_progress}% | Timer: {elapsed:.1f}s (Click / E to Clear)", 1.0, 0.3, 0.3)
                 else:
-                    draw_text(10, 625, "Baking in progress...", 0.9, 0.9, 0.9)
+                    draw_text(10, 650, f"PIZZA BAKING: {pizza_baking_progress}% | Timer: {elapsed:.1f}s / {PIZZA_BAKING_DURATION:.1f}s (Sweet spot: 60-115%)", 1.0, 0.85, 0.2)
             elif pizza_topping_done and not pizza_baked:
-                draw_text(10, 650, "OVEN: Left Click to Place Raw Pizza inside", 1.0, 0.85, 0.2)
+                draw_text(10, 650, "OVEN: Left Click / E to Place Raw Pizza inside", 1.0, 0.85, 0.2)
 
     # --- Level 2 4-Directional Frying Mini-Game HUD Banner ---
     if fries_frying_active:
-        draw_text(330, 690, "FRYING MINI-GAME: CLICK TARGET DIRECTION", 1.0, 0.85, 0.2)
+        elapsed = time.time() - fries_frying_start
+        draw_text(310, 700, f"DEEP FRYING: {fries_progress}% | Timer: {elapsed:.1f}s / {FRIES_FRYING_DURATION:.1f}s", 1.0, 0.95, 0.2)
+        draw_text(310, 675, "CLICK OR PRESS ARROW KEYS / WASD TO MATCH DIRECTION", 0.9, 0.9, 0.9)
         cur_t = FRIES_TARGET_SEQUENCE[fries_target_index] if fries_target_index < len(FRIES_TARGET_SEQUENCE) else 'DONE'
-        draw_text(440, 655, "TARGET: %s" % cur_t, 0.3, 1.0, 0.3)
-        draw_text(350, 625, "Progress: %d / 6  |  Quality: %d%%" % (fries_target_index, fries_quality), 0.9, 0.9, 0.9)
-        draw_text(485, 595, "^", 1.0, 1.0, 1.0)
-        draw_text(450, 575, "<   [PAN]   >", 1.0, 1.0, 1.0)
-        draw_text(485, 555, "v", 1.0, 1.0, 1.0)
+        draw_text(440, 645, f"TARGET: {cur_t}", 0.3, 1.0, 0.3)
+        draw_text(350, 615, f"Direction: {fries_target_index} / 6  |  Quality: {fries_quality}%", 0.9, 0.9, 0.9)
+        draw_text(485, 585, "^", 1.0, 1.0, 1.0)
+        draw_text(450, 565, "<   [PAN]   >", 1.0, 1.0, 1.0)
+        draw_text(485, 545, "v", 1.0, 1.0, 1.0)
 
     # --- Prep Table Instructions ---
     if player_near_station("prep"):
@@ -1814,29 +1936,57 @@ def perform_interact_action():
                 else:
                     log_message("Plating Station is LOCKED!")
 
-        # 5. Check if near Stove Station
-        elif player_near_station("stove"):
-            if potato_cut_done and not potato_boiling and not potato_boiled:
+        # 5. Check if near Stove Station or Fryer Station
+        elif player_near_station("stove") or player_near_station("fryer"):
+            # Potato Boiling (Stove Pot)
+            if player_near_station("stove") and potato_cut_done and not potato_boiling and not potato_boiled:
                 potato_boiling = True
                 potato_boil_start = time.time()
                 potato_boil_progress = 0
                 game_state = STATE_FRIES_BOILING
                 hero_pov = True
-                log_message("Placed Potato Strips in Cooking Pot! Boiling started...")
+                log_message(f"Placed Potato Strips in Cooking Pot! Boiling started ({BOILING_DURATION:.0f}s timer)...")
+
+            # French Fries Frying (Fryer Station or Stove)
             elif potato_boiled and not fries_ready:
                 if not fries_frying_active:
                     fries_frying_active = True
+                    fries_frying_start = time.time()
+                    fries_progress = 0
                     fries_target_index = 0
                     fries_quality = 100
                     game_state = STATE_FRIES_FRYING
                     hero_pov = True
-                    log_message("Frying Mini-Game Started! Use WASD/Arrow keys or click target direction: %s" % FRIES_TARGET_SEQUENCE[0])
-            elif not patty_on_stove and has_frozen_patty and not has_cooked_patty:
+                    log_message(f"Lowered Strips into Deep Fryer! Frying started ({FRIES_FRYING_DURATION:.0f}s timer). Match directions & remove at 60-115%!")
+                else:
+                    if fries_progress < 60:
+                        score = max(0, score - 10)
+                        log_message(f"French Fries Undercooked ({fries_progress}%)! (-10 pts penalty). Keep frying until golden!")
+                    elif 60 <= fries_progress <= 115:
+                        fries_frying_active = False
+                        fries_ready = True
+                        hero_pov = False
+                        l2_fries_score = 35
+                        score += 35
+                        if has_cooked_patty:
+                            game_state = STATE_L2_ASSEMBLY_COLLECTING
+                            log_message(f"CRISPY FRENCH FRIES READY ({fries_progress}%)! (+35 pts). Collect Burger Assembly ingredients from Storage.")
+                        else:
+                            game_state = STATE_FRIES_READY
+                            log_message(f"CRISPY FRENCH FRIES READY ({fries_progress}%)! (+35 pts). Now prepare the Patty.")
+                    elif fries_progress > 115:
+                        fries_frying_active = False
+                        hero_pov = False
+                        score = max(0, score - 20)
+                        log_message(f"French Fries BURNT ({fries_progress}%)! (-20 pts penalty). Burnt fries rejected! Try again.")
+
+            # Patty Frying (Stove Pan)
+            elif not patty_on_stove and has_frozen_patty and not has_cooked_patty and player_near_station("stove"):
                 patty_on_stove = True
                 patty_state = PATTY_STATE_FRYING
                 patty_frying_start = time.time()
                 patty_progress = 0
-                log_message("Placed Frozen Patty on Stove! Frying started...")
+                log_message(f"Placed Frozen Patty in Frying Pan! Frying started ({FRYING_DURATION:.0f}s timer). Watch timer & remove at 60-115%!")
             elif patty_on_stove:
                 if patty_progress < 60:
                     patty_on_stove = False
@@ -1851,9 +2001,9 @@ def perform_interact_action():
                     score += 25
                     if fries_ready:
                         game_state = STATE_L2_ASSEMBLY_COLLECTING
-                        log_message("PATTY & FRIES READY! Collect Bun, Cheese, Tomato, Cucumber from Storage.")
+                        log_message(f"PATTY COOKED PERFECTLY ({patty_progress}%)! (+25 pts). Collect Bun, Cheese, Tomato, Cucumber from Storage.")
                     else:
-                        log_message("PATTY READY! (+25 pts). Now prepare the French Fries.")
+                        log_message(f"PATTY READY ({patty_progress}%)! (+25 pts). Now prepare the French Fries.")
                 elif patty_progress > 115 or patty_state == PATTY_STATE_BURNT:
                     patty_on_stove = False
                     patty_state = PATTY_STATE_BURNT
@@ -2174,11 +2324,12 @@ def mouseListener(button, state, x, y):
 def idle():
     global last_time, patty_progress, patty_state, hero_pov
     global potato_boiling, potato_boil_start, potato_boil_progress, potato_boiled, score
+    global fries_frying_active, fries_frying_start, fries_progress, fries_ready
     global pizza_in_oven, pizza_baking_start, pizza_baking_progress, pizza_state
     now = time.time()
     last_time = now
 
-    # Continuous frying progress logic (without glutTimerFunc)
+    # Continuous patty frying progress logic (without glutTimerFunc)
     if patty_on_stove and (game_state in (STATE_L2_FRYING, STATE_L2_PATTY_READY) or patty_state == PATTY_STATE_FRYING):
         elapsed = now - patty_frying_start
         patty_progress = min(150, int((elapsed / FRYING_DURATION) * 100))
@@ -2186,6 +2337,11 @@ def idle():
             patty_state = PATTY_STATE_COOKED
         elif patty_progress > 115 and patty_state != PATTY_STATE_BURNT:
             patty_state = PATTY_STATE_BURNT
+
+    # Continuous french fries deep frying progress timer
+    if fries_frying_active and not fries_ready:
+        elapsed = now - fries_frying_start
+        fries_progress = min(150, int((elapsed / FRIES_FRYING_DURATION) * 100))
 
     # Continuous boiling progress logic (without glutTimerFunc)
     if potato_boiling and not potato_boiled:
@@ -2196,7 +2352,7 @@ def idle():
             potato_boiled = True
             hero_pov = False
             score += 20
-            log_message("BOILED POTATO STRIPS (+20 pts)! Take strips to Frying Pan.")
+            log_message("BOILED POTATO STRIPS (+20 pts)! Take strips to Deep Fryer.")
 
     # Continuous pizza baking progress logic (without glutTimerFunc)
     if pizza_in_oven and (game_state == STATE_L3_BAKING or pizza_state == PIZZA_STATE_BAKING):
