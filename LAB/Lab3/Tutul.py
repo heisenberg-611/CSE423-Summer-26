@@ -1659,12 +1659,320 @@ def draw_hud():
     y = 34
     for msg in message_log[-4:]:
         draw_text(10, y, msg)
-        y -= 22
+    # =========================
+# INPUT LISTENERS & ACTIONS
+# =========================
+def handle_fries_direction_input(direction):
+    """Process directional input (arrows or WASD or mouse clicks) in frying mini-game."""
+    global fries_target_index, fries_quality, fries_frying_active, fries_ready
+    global hero_pov, game_state, l2_fries_score, score
+    if not fries_frying_active:
+        return
+    target_dir = FRIES_TARGET_SEQUENCE[fries_target_index]
+    if direction == target_dir:
+        fries_target_index += 1
+        log_message("CORRECT DIRECTION %s! (%d / 6)" % (direction, fries_target_index))
+        if fries_target_index >= len(FRIES_TARGET_SEQUENCE):
+            fries_frying_active = False
+            fries_ready = True
+            hero_pov = False
+            if has_cooked_patty:
+                game_state = STATE_L2_ASSEMBLY_COLLECTING
+                log_message("FRIES & PATTY READY! Collect Bun, Cheese, Tomato, Cucumber from Storage.")
+            else:
+                game_state = STATE_FRIES_READY
+                log_message("FRENCH FRIES READY! (+35 pts). Now prepare the Patty.")
+            l2_fries_score = 35
+            score += 35
+    else:
+        fries_quality = max(0, fries_quality - 15)
+        log_message("WRONG DIRECTION! Input %s, Target was %s (-15%% Quality, current: %d%%)" % (direction, target_dir, fries_quality))
+        if fries_quality <= 0:
+            fries_frying_active = False
+            hero_pov = False
+            log_message("Fries Burnt! Quality dropped to 0%. Click pan to retry frying.")
 
 
-# =========================
-# INPUT LISTENERS
-# =========================
+def perform_interact_action():
+    """Universal interaction action triggered by Left Click, 'E' key, or Space bar."""
+    global hero_pov, score, cut_count, cutting_done, prep_oven_unlocked, game_state, knife_anim_start
+    global plating_count, plating_done, level2_unlocked, level3_unlocked
+    global cutting_score, cooking_score
+    global veg_cutting_active, veg_cutting_index, veg_cut_progress
+    global potato_cutting_active, sausage_cutting_active
+    global has_frozen_patty, patty_on_stove, patty_frying_start, patty_progress, patty_state
+    global has_cooked_patty, burger_assembly_step, burger_ingredients_placed, burger_ready, burger_plated
+    global l2_score, l2_frying_score, l2_assembly_score
+    global has_potato, potato_cut_count, potato_cut_done, potato_boiling, potato_boil_start
+    global potato_boil_progress, potato_boiled, fries_frying_active, fries_target_index
+    global fries_quality, fries_ready, fries_plated, l2_fries_score
+    global sausage_cut_count, sausage_cut_done, dough_mix_count, dough_ready
+    global pizza_topping_step, pizza_topping_done, pizza_in_oven, pizza_baking_start
+    global pizza_baking_progress, pizza_baked, pizza_state
+    global l3_score, l3_cutting_score, l3_mixing_score, l3_topping_score, l3_baking_score
+    global assembly_minigame_active
+
+    # 1. Try collecting nearby 3D ingredient first
+    if not try_collect_ingredient():
+        # 2. Check if near Cutting Station
+        if player_near_station("cutting"):
+            if game_state in (STATE_L3_COLLECTING_SAUSAGE, STATE_L3_SAUSAGE_CUTTING) or (level3_unlocked and not sausage_cut_done):
+                if not has_sausage:
+                    log_message("Collect Sausage from Storage Area first!")
+                else:
+                    if not sausage_cutting_active:
+                        sausage_cutting_active = True
+                        hero_pov = True
+                        log_message("Entered Cutting View! Press 'Q' to cut Sausage (%d cuts)." % SAUSAGE_CUT_REQUIREMENT)
+                    else:
+                        log_message("Already cutting! Press 'Q' to continue cutting.")
+            elif has_potato and not potato_cut_done:
+                if not potato_cutting_active:
+                    potato_cutting_active = True
+                    hero_pov = True
+                    log_message("Entered Cutting View! Press 'Q' to cut Potato into strips (%d cuts)." % POTATO_CUT_REQUIREMENT)
+                else:
+                    log_message("Already cutting! Press 'Q' to continue cutting.")
+            elif cutting_unlocked and not cutting_done:
+                if not veg_cutting_active:
+                    veg_cutting_active = True
+                    veg_cutting_index = 0
+                    for k in veg_cut_progress:
+                        veg_cut_progress[k] = 0
+                    hero_pov = True
+                    log_message("Entered Cutting View! Press 'Q' to cut each vegetable (3 cuts each).")
+                else:
+                    log_message("Already cutting! Press 'Q' to continue cutting.")
+            elif cutting_done or potato_cut_done or sausage_cut_done:
+                log_message("Cutting complete! Move to next station.")
+            else:
+                log_message("Cutting Station is LOCKED! Collect required ingredients first.")
+
+        # 3. Check if near Mixing Station (Level 3 Dough Mixing)
+        elif player_near_station("mixing") and game_state == STATE_L3_DOUGH_MAKING:
+            dough_mix_count += 1
+            score += 5
+            log_message("Mixed Dough %d / %d completed! (+5 pts)" % (dough_mix_count, DOUGH_MIX_REQUIREMENT))
+            if dough_mix_count >= DOUGH_MIX_REQUIREMENT:
+                dough_ready = True
+                game_state = STATE_L3_TOPPING
+                l3_mixing_score = 25
+                score += 25
+                log_message("PIZZA DOUGH READY! +25 pts | Carry dough to Prep Table for Toppings.")
+
+        # 4. Check if near Plating Station
+        elif player_near_station("plating"):
+            if level2_unlocked and not level3_unlocked and game_state != STATE_LEVEL_COMPLETE:
+                if burger_ready and not burger_plated:
+                    burger_plated = True
+                    score += 15
+                    log_message("Placed Completed Burger on Plate! (+15 pts)")
+                    if burger_plated and fries_plated:
+                        game_state = STATE_L2_COMPLETE
+                        level3_unlocked = True
+                        l2_score = l2_frying_score + l2_assembly_score + l2_fries_score + 30
+                        score += 30
+                        log_message("LEVEL 2 COMPLETE! Burger & Fries Plated (+30 pts) | Press '3' for Level 3.")
+                    else:
+                        log_message("Burger Plated! Now prepare and plate French Fries to complete Level 2.")
+                elif fries_ready and not fries_plated:
+                    fries_plated = True
+                    score += 15
+                    log_message("Placed French Fries on Plate! (+15 pts)")
+                    if burger_plated and fries_plated:
+                        game_state = STATE_L2_COMPLETE
+                        level3_unlocked = True
+                        l2_score = l2_frying_score + l2_assembly_score + l2_fries_score + 30
+                        score += 30
+                        log_message("LEVEL 2 COMPLETE! Burger & Fries Plated (+30 pts) | Press '3' for Level 3.")
+                    else:
+                        log_message("French Fries Plated! Now prepare and plate Burger to complete Level 2.")
+                elif burger_plated and fries_plated:
+                    log_message("LEVEL 2 COMPLETE! Press '3' to start Level 3.")
+                elif burger_plated and not fries_plated:
+                    log_message("Burger already plated! Prepare & plate French Fries next.")
+                elif fries_plated and not burger_plated:
+                    log_message("French Fries already plated! Prepare & plate Burger next.")
+                else:
+                    log_message("Prepare Burger or French Fries first before plating!")
+
+            elif not level2_unlocked:
+                if prep_oven_unlocked and not plating_done:
+                    plating_count += 1
+                    cooking_score += 5
+                    score += 5
+                    log_message("Placed ingredient %d / %d onto plate! (+5 pts)" % (plating_count, PLATING_REQUIREMENT))
+                    if plating_count >= PLATING_REQUIREMENT:
+                        plating_done = True
+                        level2_unlocked = True
+                        cooking_score += 20
+                        score += 20
+                        game_state = STATE_LEVEL_COMPLETE
+                        log_message("DISH COMPLETE! Level 2 UNLOCKED! Press '2' to start Level 2.")
+                elif plating_done:
+                    log_message("DISH COMPLETE! Level 1 Clear. Press '2' to start Level 2.")
+                else:
+                    log_message("Plating Station is LOCKED!")
+
+        # 5. Check if near Stove Station
+        elif player_near_station("stove"):
+            if potato_cut_done and not potato_boiling and not potato_boiled:
+                potato_boiling = True
+                potato_boil_start = time.time()
+                potato_boil_progress = 0
+                game_state = STATE_FRIES_BOILING
+                hero_pov = True
+                log_message("Placed Potato Strips in Cooking Pot! Boiling started...")
+            elif potato_boiled and not fries_ready:
+                if not fries_frying_active:
+                    fries_frying_active = True
+                    fries_target_index = 0
+                    fries_quality = 100
+                    game_state = STATE_FRIES_FRYING
+                    hero_pov = True
+                    log_message("Frying Mini-Game Started! Use WASD/Arrow keys or click target direction: %s" % FRIES_TARGET_SEQUENCE[0])
+            elif not patty_on_stove and has_frozen_patty and not has_cooked_patty:
+                patty_on_stove = True
+                patty_state = PATTY_STATE_FRYING
+                patty_frying_start = time.time()
+                patty_progress = 0
+                log_message("Placed Frozen Patty on Stove! Frying started...")
+            elif patty_on_stove:
+                if patty_progress < 60:
+                    patty_on_stove = False
+                    patty_state = PATTY_STATE_FROZEN
+                    score = max(0, score - 10)
+                    log_message(f"Patty Undercooked ({patty_progress}%)! (-10 pts penalty). Place back on stove.")
+                elif 60 <= patty_progress <= 115 or patty_state == PATTY_STATE_COOKED:
+                    patty_on_stove = False
+                    has_cooked_patty = True
+                    patty_state = PATTY_STATE_COOKED
+                    l2_frying_score = 25
+                    score += 25
+                    if fries_ready:
+                        game_state = STATE_L2_ASSEMBLY_COLLECTING
+                        log_message("PATTY & FRIES READY! Collect Bun, Cheese, Tomato, Cucumber from Storage.")
+                    else:
+                        log_message("PATTY READY! (+25 pts). Now prepare the French Fries.")
+                elif patty_progress > 115 or patty_state == PATTY_STATE_BURNT:
+                    patty_on_stove = False
+                    patty_state = PATTY_STATE_BURNT
+                    score = max(0, score - 20)
+                    log_message(f"Patty BURNT ({patty_progress}%)! (-20 pts penalty). Burnt patty rejected! Try again.")
+            elif has_cooked_patty:
+                log_message("Patty already cooked! Move to Prep Table for Burger Assembly.")
+            else:
+                log_message("Collect a Frozen Patty or Potato from Storage Area first.")
+
+        # 6. Check if near Oven Station (Level 3 Pizza Baking)
+        elif player_near_station("oven") and (game_state == STATE_L3_BAKING or pizza_in_oven):
+            if not pizza_in_oven and pizza_topping_done and not pizza_baked:
+                pizza_in_oven = True
+                pizza_state = PIZZA_STATE_BAKING
+                pizza_baking_start = time.time()
+                pizza_baking_progress = 0
+                log_message("Placed Raw Pizza in Oven! Baking started...")
+            elif pizza_in_oven:
+                if pizza_baking_progress < 60:
+                    pizza_in_oven = False
+                    pizza_state = PIZZA_STATE_UNCOOKED
+                    score = max(0, score - 10)
+                    log_message(f"Pizza Undercooked ({pizza_baking_progress}%)! (-10 pts penalty). Place back in oven.")
+                elif 60 <= pizza_baking_progress <= 115 or pizza_state == PIZZA_STATE_COOKED:
+                    pizza_in_oven = False
+                    pizza_baked = True
+                    pizza_state = PIZZA_STATE_COOKED
+                    game_state = STATE_L3_COMPLETE
+                    l3_baking_score = 30
+                    l3_score = l3_cutting_score + l3_mixing_score + l3_topping_score + l3_baking_score
+                    score += 30
+                    log_message("PIZZA READY! - PIZZA COMPLETE! (+30 bonus pts)")
+                elif pizza_baking_progress > 115 or pizza_state == PIZZA_STATE_BURNT:
+                    pizza_in_oven = False
+                    pizza_state = PIZZA_STATE_BURNT
+                    score = max(0, score - 20)
+                    log_message(f"Pizza BURNT ({pizza_baking_progress}%)! (-20 pts penalty). Burnt pizza rejected! Try again.")
+
+        # 7. Check if near Prep Table (Level 2 Burger Assembly & Level 3 Pizza Topping)
+        elif player_near_station("prep"):
+            if level3_unlocked or game_state.startswith("PIZZA") or game_state in (STATE_L3_COLLECTING_SAUSAGE, STATE_L3_SAUSAGE_CUTTING, STATE_L3_DOUGH_MAKING, STATE_L3_TOPPING):
+                if game_state == STATE_L3_TOPPING or (dough_ready and not pizza_topping_done):
+                    if pizza_topping_step == 0:
+                        pizza_topping_step = 1
+                        score += 10
+                        log_message("Applied Tomato Sauce! (+10 pts)")
+                    elif pizza_topping_step == 1:
+                        pizza_topping_step = 2
+                        score += 10
+                        log_message("Applied Cheese! (+10 pts)")
+                    elif pizza_topping_step == 2:
+                        pizza_topping_step = 3
+                        pizza_topping_done = True
+                        game_state = STATE_L3_BAKING
+                        l3_topping_score = 35
+                        score += 35
+                        log_message("Added Cut Sausage! PIZZA PREPARED! (+35 pts) | Carry to Oven to Bake!")
+                    elif pizza_topping_done:
+                        log_message("Pizza Toppings completed! Carry pizza to Oven Station.")
+                else:
+                    log_message("Mix the Pizza Dough at Mixing Station first!")
+
+            elif game_state == STATE_L2_ASSEMBLY_COLLECTING:
+                log_message("Collect Bun, Cheese, Tomato, Cucumber from Storage first!")
+            elif game_state == STATE_L2_ASSEMBLY or (level2_unlocked and not level3_unlocked and has_cooked_patty and game_state != STATE_L2_ASSEMBLY_COLLECTING):
+                if not has_cooked_patty:
+                    log_message("Fry the Frozen Patty at the Stove Area first!")
+                elif burger_assembly_step < len(BURGER_STEPS):
+                    if not assembly_minigame_active:
+                        assembly_minigame_active = True
+                        hero_pov = True
+                        log_message("Entered Burger Assembly! Look at the required ingredient and press E / Click.")
+                    else:
+                        px, py = STATIONS["prep"]
+                        offsets = [-125, -75, -25, 25, 75, 125]
+                        best_idx = -1
+                        best_diff = 999
+                        for i, oy in enumerate(offsets):
+                            if i >= burger_assembly_step:
+                                tx, ty = px + 50, py + oy
+                                dx = tx - hero_pos[0]
+                                dy = ty - hero_pos[1]
+                                target_angle = math.degrees(math.atan2(dx, -dy)) % 360
+                                player_angle = angle % 360
+                                diff = abs(target_angle - player_angle)
+                                if diff > 180:
+                                    diff = 360 - diff
+                                if diff < best_diff and diff < 25:
+                                    best_diff = diff
+                                    best_idx = i
+                                    
+                        if best_idx == burger_assembly_step:
+                            next_item = BURGER_STEPS[burger_assembly_step]
+                            burger_ingredients_placed.append(next_item)
+                            burger_assembly_step += 1
+                            l2_assembly_score += 10
+                            score += 10
+                            log_message("Placed %s (%d / 6)! (+10 pts)" % (next_item, burger_assembly_step))
+                            if burger_assembly_step >= len(BURGER_STEPS):
+                                burger_ready = True
+                                l2_assembly_score = 30
+                                assembly_minigame_active = False
+                                hero_pov = False
+                                game_state = STATE_L2_COMPLETE
+                                log_message("BURGER READY! Carry completed burger to Plating Station!")
+                        elif best_idx != -1:
+                            log_message("WRONG INGREDIENT! You need to place %s next." % BURGER_STEPS[burger_assembly_step])
+                        else:
+                            log_message("Not looking at any ingredient. Look directly at %s." % BURGER_STEPS[burger_assembly_step])
+                elif burger_ready:
+                    log_message("BURGER READY! Take completed burger to Plating Station.")
+
+        else:
+            near = nearest_station_within_radius()
+            if near:
+                log_message("Near %s. Move to target station." % near.capitalize())
+
+
 def keyboardListener(key, x, y):
     global hero_pos, angle, hero_pov
     global veg_cutting_active, veg_cutting_index, veg_cut_progress
@@ -1673,35 +1981,65 @@ def keyboardListener(key, x, y):
     global cut_count, cutting_done, prep_oven_unlocked, game_state, knife_anim_start
     global cutting_score, score
 
-    if key == b'w':
+    # Normalize key to lower-case if possible
+    k = key.lower() if isinstance(key, bytes) else key
+
+    # Direction handling in Frying Mini-Game
+    if fries_frying_active and k in (b'w', b's', b'a', b'd'):
+        if k == b'w':
+            handle_fries_direction_input('↑')
+        elif k == b's':
+            handle_fries_direction_input('↓')
+        elif k == b'a':
+            handle_fries_direction_input('←')
+        elif k == b'd':
+            handle_fries_direction_input('→')
+        glutPostRedisplay()
+        return
+
+    # Normal Movement & Rotation
+    if k == b'w':
+        # Move Forward along chef's facing direction
         rad = math.radians(angle)
         hero_pos[0] += PLAYER_SPEED * math.sin(rad)
-        hero_pos[1] += PLAYER_SPEED * math.cos(rad)
-        clamp_player_position()
-
-    elif key == b's':
-        rad = math.radians(angle)
-        hero_pos[0] -= PLAYER_SPEED * math.sin(rad)
         hero_pos[1] -= PLAYER_SPEED * math.cos(rad)
         clamp_player_position()
 
-    elif key == b'd':
-        angle = (angle - TURN_SPEED) % 360
+    elif k == b's':
+        # Move Backward
+        rad = math.radians(angle)
+        hero_pos[0] -= PLAYER_SPEED * math.sin(rad)
+        hero_pos[1] += PLAYER_SPEED * math.cos(rad)
+        clamp_player_position()
 
-    elif key == b'a':
+    elif k == b'a':
+        # Turn Left (counter-clockwise)
         angle = (angle + TURN_SPEED) % 360
 
-    elif key == b'2':
-        # Start Level 2 only once, after Level 1 is complete.
+    elif k == b'd':
+        # Turn Right (clockwise)
+        angle = (angle - TURN_SPEED) % 360
+
+    elif k == b'e' or k == b' ':
+        # Universal Interact / Action key
+        perform_interact_action()
+
+    elif k == b'1':
+        # Reset / Restart Game
+        reset_game()
+
+    elif k == b'2':
+        # Start Level 2 (when unlocked)
         if level2_unlocked and game_state == STATE_LEVEL_COMPLETE:
             start_level_2()
 
-    elif key == b'3':
-        # Start Level 3 only after Level 2 is complete.
+    elif k == b'3':
+        # Start Level 3 (when unlocked)
         if level3_unlocked and game_state == STATE_L2_COMPLETE:
             start_level_3()
 
-    elif key == b'r' or key == b'R':
+    elif k == b'r':
+        # Remove wrong items from inventory
         if not level2_unlocked:
             wrong_items = [ing for ing in collected_ingredients if ing not in REQUIRED_INGREDIENTS]
         else:
@@ -1714,13 +2052,13 @@ def keyboardListener(key, x, y):
         else:
             log_message("No wrong items in inventory to remove.")
 
-    elif key == b'f' or key == b'F':
-        # Toggle camera to the chef's first-person point of view.
+    elif k == b'f':
+        # Toggle camera to chef's first-person POV vs third-person
         hero_pov = not hero_pov
         log_message("Camera: " + ("CHEF POV (First Person)" if hero_pov else "THIRD PERSON"))
 
-    elif key == b'q' or key == b'Q':
-        # One cut per 'Q' key press while the locked cutting-board camera view is active across Level 1, 2, and 3.
+    elif k == b'q':
+        # Cutting / Chopping action (Level 1, Level 2, and Level 3)
         if veg_cutting_active and cutting_unlocked and not cutting_done:
             if veg_cutting_index < len(REQUIRED_INGREDIENTS):
                 current_veg = REQUIRED_INGREDIENTS[veg_cutting_index]
@@ -1734,7 +2072,6 @@ def keyboardListener(key, x, y):
                 if veg_cut_progress[current_veg] >= CUTS_PER_VEGETABLE:
                     veg_cutting_index += 1
                     if veg_cutting_index >= len(REQUIRED_INGREDIENTS):
-                        # All vegetables fully chopped: unlock next stage and restore camera.
                         cutting_done = True
                         prep_oven_unlocked = True
                         game_state = STATE_COOKING
@@ -1780,6 +2117,19 @@ def specialKeyListener(key, x, y):
     global camera_pos
     yaw, height, distance = camera_pos
 
+    # Direction inputs for frying minigame
+    if fries_frying_active:
+        if key == GLUT_KEY_UP:
+            handle_fries_direction_input('↑')
+        elif key == GLUT_KEY_DOWN:
+            handle_fries_direction_input('↓')
+        elif key == GLUT_KEY_LEFT:
+            handle_fries_direction_input('←')
+        elif key == GLUT_KEY_RIGHT:
+            handle_fries_direction_input('→')
+        glutPostRedisplay()
+        return
+
     if key == GLUT_KEY_UP:
         height = min(height + CAMERA_HEIGHT_STEP, CAMERA_HEIGHT_MAX)
     elif key == GLUT_KEY_DOWN:
@@ -1794,21 +2144,7 @@ def specialKeyListener(key, x, y):
 
 
 def mouseListener(button, state, x, y):
-    global hero_pov, score, cut_count, cutting_done, prep_oven_unlocked, game_state, knife_anim_start
-    global plating_count, plating_done, level2_unlocked, level3_unlocked
-    global cutting_score, cooking_score
-    global veg_cutting_active, veg_cutting_index, veg_cut_progress
-    global potato_cutting_active, sausage_cutting_active
-    global has_frozen_patty, patty_on_stove, patty_frying_start, patty_progress, patty_state
-    global has_cooked_patty, burger_assembly_step, burger_ingredients_placed, burger_ready, burger_plated
-    global l2_score, l2_frying_score, l2_assembly_score
-    global has_potato, potato_cut_count, potato_cut_done, potato_boiling, potato_boil_start
-    global potato_boil_progress, potato_boiled, fries_frying_active, fries_target_index
-    global fries_quality, fries_ready, fries_plated, l2_fries_score
-    global sausage_cut_count, sausage_cut_done, dough_mix_count, dough_ready
-    global pizza_topping_step, pizza_topping_done, pizza_in_oven, pizza_baking_start
-    global pizza_baking_progress, pizza_baked, pizza_state
-    global l3_score, l3_cutting_score, l3_mixing_score, l3_topping_score, l3_baking_score
+    global hero_pov
 
     if state != GLUT_DOWN:
         return
@@ -1818,310 +2154,16 @@ def mouseListener(button, state, x, y):
         log_message("Camera: " + ("FIRST PERSON" if hero_pov else "THIRD PERSON"))
 
     elif button == GLUT_LEFT_BUTTON:
-        # 1. Try collecting nearby 3D ingredient first
-        if not try_collect_ingredient():
-            # 2. Check if near Cutting Station
-            if player_near_station("cutting"):
-                if game_state in (STATE_L3_COLLECTING_SAUSAGE, STATE_L3_SAUSAGE_CUTTING) or (level3_unlocked and not sausage_cut_done):
-                    if not has_sausage:
-                        log_message("Collect Sausage from Storage Area first!")
-                    else:
-                        if not sausage_cutting_active:
-                            sausage_cutting_active = True
-                            hero_pov = True
-                            log_message("Entered Cutting View! Press 'Q' to cut Sausage (%d cuts)." % SAUSAGE_CUT_REQUIREMENT)
-                        else:
-                            log_message("Already cutting! Press 'Q' to continue cutting.")
-                elif has_potato and not potato_cut_done:
-                    if not potato_cutting_active:
-                        potato_cutting_active = True
-                        hero_pov = True
-                        log_message("Entered Cutting View! Press 'Q' to cut Potato into strips (%d cuts)." % POTATO_CUT_REQUIREMENT)
-                    else:
-                        log_message("Already cutting! Press 'Q' to continue cutting.")
-                elif cutting_unlocked and not cutting_done:
-                    if not veg_cutting_active:
-                        # Left-click begins the vegetable cutting sequence: lock camera to the
-                        # cutting board and reset per-vegetable progress. Individual cuts are
-                        # then performed with the 'Q' key.
-                        veg_cutting_active = True
-                        veg_cutting_index = 0
-                        for k in veg_cut_progress:
-                            veg_cut_progress[k] = 0
-                        hero_pov = True
-                        log_message("Entered Cutting View! Press 'Q' to cut each vegetable (3 cuts each).")
-                    else:
-                        log_message("Already cutting! Press 'Q' to continue cutting.")
-                elif cutting_done or potato_cut_done or sausage_cut_done:
-                    log_message("Cutting complete! Move to next station.")
-                else:
-                    log_message("Cutting Station is LOCKED!")
-
-            # 3. Check if near Mixing Station (Level 3 Dough Mixing)
-            elif player_near_station("mixing") and game_state == STATE_L3_DOUGH_MAKING:
-                dough_mix_count += 1
-                score += 5
-                log_message("Mixed Dough %d / %d completed! (+5 pts)" % (dough_mix_count, DOUGH_MIX_REQUIREMENT))
-                if dough_mix_count >= DOUGH_MIX_REQUIREMENT:
-                    dough_ready = True
-                    game_state = STATE_L3_TOPPING
-                    l3_mixing_score = 25
-                    score += 25
-                    log_message("PIZZA DOUGH READY! +25 pts | Carry dough to Prep Table for Toppings.")
-
-            # 4. Check if near Plating Station
-            elif player_near_station("plating"):
-                if level2_unlocked and not level3_unlocked and game_state != STATE_LEVEL_COMPLETE:
-                    # Level 2 Plating Logic: Plating Burger & French Fries
-                    if burger_ready and not burger_plated:
-                        burger_plated = True
-                        score += 15
-                        log_message("Placed Completed Burger on Plate! (+15 pts)")
-                        if burger_plated and fries_plated:
-                            game_state = STATE_L2_COMPLETE
-                            level3_unlocked = True
-                            l2_score = l2_frying_score + l2_assembly_score + l2_fries_score + 30
-                            score += 30
-                            log_message("LEVEL 2 COMPLETE! Burger & Fries Plated (+30 pts) | Press '3' for Level 3.")
-                        else:
-                            log_message("Burger Plated! Now prepare and plate French Fries to complete Level 2.")
-                    elif fries_ready and not fries_plated:
-                        fries_plated = True
-                        score += 15
-                        log_message("Placed French Fries on Plate! (+15 pts)")
-                        if burger_plated and fries_plated:
-                            game_state = STATE_L2_COMPLETE
-                            level3_unlocked = True
-                            l2_score = l2_frying_score + l2_assembly_score + l2_fries_score + 30
-                            score += 30
-                            log_message("LEVEL 2 COMPLETE! Burger & Fries Plated (+30 pts) | Press '3' for Level 3.")
-                        else:
-                            log_message("French Fries Plated! Now prepare and plate Burger to complete Level 2.")
-                    elif burger_plated and fries_plated:
-                        log_message("LEVEL 2 COMPLETE! Press '3' to start Level 3.")
-                    elif burger_plated and not fries_plated:
-                        log_message("Burger already plated! Prepare & plate French Fries next.")
-                    elif fries_plated and not burger_plated:
-                        log_message("French Fries already plated! Prepare & plate Burger next.")
-                    else:
-                        log_message("Prepare Burger or French Fries first before plating!")
-
-                elif not level2_unlocked:
-                    # Level 1 Plating Logic
-                    if prep_oven_unlocked and not plating_done:
-                        plating_count += 1
-                        cooking_score += 5
-                        score += 5
-                        log_message("Placed ingredient %d / %d onto plate! (+5 pts)" % (plating_count, PLATING_REQUIREMENT))
-                        if plating_count >= PLATING_REQUIREMENT:
-                            plating_done = True
-                            level2_unlocked = True
-                            cooking_score += 20
-                            score += 20
-                            game_state = STATE_LEVEL_COMPLETE
-                            log_message("DISH COMPLETE! Level 2 UNLOCKED! Press '2' to start Level 2.")
-                    elif plating_done:
-                        log_message("DISH COMPLETE! Level 1 Clear. Press '2' to start Level 2.")
-                    else:
-                        log_message("Plating Station is LOCKED!")
-
-            # 5. Check if near Stove Station (Patty Frying, Potato Boiling, & Fries Frying)
-            elif player_near_station("stove"):
-                if potato_cut_done and not potato_boiling and not potato_boiled:
-                    potato_boiling = True
-                    potato_boil_start = time.time()
-                    potato_boil_progress = 0
-                    game_state = STATE_FRIES_BOILING
-                    hero_pov = True
-                    log_message("Placed Potato Strips in Cooking Pot! Boiling started...")
-                elif potato_boiled and not fries_ready:
-                    if not fries_frying_active:
-                        fries_frying_active = True
-                        fries_target_index = 0
-                        fries_quality = 100
-                        game_state = STATE_FRIES_FRYING
-                        hero_pov = True
-                        log_message("Frying Mini-Game Started! Click screen target direction: %s" % FRIES_TARGET_SEQUENCE[0])
-                    else:
-                        dx = x - (WINDOW_WIDTH // 2)
-                        dy = y - (WINDOW_HEIGHT // 2)
-                        if abs(dx) > abs(dy):
-                            clicked_dir = '→' if dx > 0 else '←'
-                        else:
-                            clicked_dir = '↓' if dy > 0 else '↑'
-
-                        target_dir = FRIES_TARGET_SEQUENCE[fries_target_index]
-                        if clicked_dir == target_dir:
-                            fries_target_index += 1
-                            log_message("CORRECT DIRECTION %s! (%d / 6)" % (clicked_dir, fries_target_index))
-                            if fries_target_index >= len(FRIES_TARGET_SEQUENCE):
-                                fries_frying_active = False
-                                fries_ready = True
-                                hero_pov = False
-                                if has_cooked_patty:
-                                    game_state = STATE_L2_ASSEMBLY_COLLECTING
-                                    log_message("FRIES & PATTY READY! Collect Bun, Cheese, Tomato, Cucumber from Storage.")
-                                else:
-                                    game_state = STATE_FRIES_READY
-                                    log_message("FRENCH FRIES READY! (+35 pts). Now prepare the Patty.")
-                                l2_fries_score = 35
-                                score += 35
-                        else:
-                            fries_quality = max(0, fries_quality - 15)
-                            log_message("WRONG DIRECTION! Clicked %s, Target was %s (-15%% Quality, current: %d%%)" % (clicked_dir, target_dir, fries_quality))
-                            if fries_quality <= 0:
-                                fries_frying_active = False
-                                hero_pov = False
-                                log_message("Fries Burnt! Quality dropped to 0%. Click pan to retry frying.")
-
-                elif not patty_on_stove and has_frozen_patty and not has_cooked_patty:
-                    patty_on_stove = True
-                    patty_state = PATTY_STATE_FRYING
-                    patty_frying_start = time.time()
-                    patty_progress = 0
-                    log_message("Placed Frozen Patty on Stove! Frying started...")
-                elif patty_on_stove:
-                    if patty_progress < 60:
-                        patty_on_stove = False
-                        patty_state = PATTY_STATE_FROZEN
-                        score = max(0, score - 10)
-                        log_message(f"Patty Undercooked ({patty_progress}%)! (-10 pts penalty). Place back on stove.")
-                    elif 60 <= patty_progress <= 115 or patty_state == PATTY_STATE_COOKED:
-                        patty_on_stove = False
-                        has_cooked_patty = True
-                        patty_state = PATTY_STATE_COOKED
-                        l2_frying_score = 25
-                        score += 25
-                        if fries_ready:
-                            game_state = STATE_L2_ASSEMBLY_COLLECTING
-                            log_message("PATTY & FRIES READY! Collect Bun, Cheese, Tomato, Cucumber from Storage.")
-                        else:
-                            log_message("PATTY READY! (+25 pts). Now prepare the French Fries.")
-                    elif patty_progress > 115 or patty_state == PATTY_STATE_BURNT:
-                        patty_on_stove = False
-                        patty_state = PATTY_STATE_BURNT
-                        score = max(0, score - 20)
-                        log_message(f"Patty BURNT ({patty_progress}%)! (-20 pts penalty). Burnt patty rejected! Try again.")
-                elif has_cooked_patty:
-                    log_message("Patty already cooked! Move to Prep Table for Burger Assembly.")
-                else:
-                    log_message("Collect a Frozen Patty or Potato from Storage Area first.")
-
-            # 6. Check if near Oven Station (Level 3 Pizza Baking)
-            elif player_near_station("oven") and (game_state == STATE_L3_BAKING or pizza_in_oven):
-                if not pizza_in_oven and pizza_topping_done and not pizza_baked:
-                    pizza_in_oven = True
-                    pizza_state = PIZZA_STATE_BAKING
-                    pizza_baking_start = time.time()
-                    pizza_baking_progress = 0
-                    log_message("Placed Raw Pizza in Oven! Baking started...")
-                elif pizza_in_oven:
-                    if pizza_baking_progress < 60:
-                        pizza_in_oven = False
-                        pizza_state = PIZZA_STATE_UNCOOKED
-                        score = max(0, score - 10)
-                        log_message(f"Pizza Undercooked ({pizza_baking_progress}%)! (-10 pts penalty). Place back in oven.")
-                    elif 60 <= pizza_baking_progress <= 115 or pizza_state == PIZZA_STATE_COOKED:
-                        pizza_in_oven = False
-                        pizza_baked = True
-                        pizza_state = PIZZA_STATE_COOKED
-                        game_state = STATE_L3_COMPLETE
-                        l3_baking_score = 30
-                        l3_score = l3_cutting_score + l3_mixing_score + l3_topping_score + l3_baking_score
-                        score += 30
-                        log_message("PIZZA READY! - PIZZA COMPLETE! (+30 bonus pts)")
-                    elif pizza_baking_progress > 115 or pizza_state == PIZZA_STATE_BURNT:
-                        pizza_in_oven = False
-                        pizza_state = PIZZA_STATE_BURNT
-                        score = max(0, score - 20)
-                        log_message(f"Pizza BURNT ({pizza_baking_progress}%)! (-20 pts penalty). Burnt pizza rejected! Try again.")
-
-            # 7. Check if near Prep Table (Level 2 Burger Assembly & Level 3 Pizza Topping)
-            elif player_near_station("prep"):
-                if level3_unlocked or game_state.startswith("PIZZA") or game_state in (STATE_L3_COLLECTING_SAUSAGE, STATE_L3_SAUSAGE_CUTTING, STATE_L3_DOUGH_MAKING, STATE_L3_TOPPING):
-                    if game_state == STATE_L3_TOPPING or (dough_ready and not pizza_topping_done):
-                        if pizza_topping_step == 0:
-                            pizza_topping_step = 1
-                            score += 10
-                            log_message("Applied Tomato Sauce! (+10 pts)")
-                        elif pizza_topping_step == 1:
-                            pizza_topping_step = 2
-                            score += 10
-                            log_message("Applied Cheese! ALIGN THE CHEESE! (+10 pts)")
-                        elif pizza_topping_step == 2:
-                            pizza_topping_step = 3
-                            pizza_topping_done = True
-                            game_state = STATE_L3_BAKING
-                            l3_topping_score = 35
-                            score += 35
-                            log_message("Added Cut Sausage! PIZZA PREPARED! (+35 pts) | Carry to Oven to Bake!")
-                        elif pizza_topping_done:
-                            log_message("Pizza Toppings completed! Carry pizza to Oven Station.")
-                    else:
-                        log_message("Mix the Pizza Dough at Mixing Station first!")
-
-                elif game_state == STATE_L2_ASSEMBLY_COLLECTING:
-                    log_message("Collect Bun, Cheese, Tomato, Cucumber from Storage first!")
-                elif game_state == STATE_L2_ASSEMBLY or (level2_unlocked and not level3_unlocked and has_cooked_patty and game_state != STATE_L2_ASSEMBLY_COLLECTING):
-                    if not has_cooked_patty:
-                        log_message("Fry the Frozen Patty at the Stove Area first!")
-                    elif burger_assembly_step < len(BURGER_STEPS):
-                        if not assembly_minigame_active:
-                            assembly_minigame_active = True
-                            hero_pov = True
-                            log_message("Entered Burger Assembly! Look at the required ingredient and left-click.")
-                        else:
-                            # We are in first-person mode, looking at the table.
-                            # Determine which ingredient is being looked at.
-                            px, py = STATIONS["prep"]
-                            # The ingredients are lined up along the Y axis in front of the table
-                            # 6 ingredients, from y=-125 to y=125, x=px+50
-                            offsets = [-125, -75, -25, 25, 75, 125]
-                            best_idx = -1
-                            best_diff = 999
-                            for i, oy in enumerate(offsets):
-                                if i >= burger_assembly_step:  # Only consider unplaced ingredients
-                                    tx, ty = px + 50, py + oy
-                                    dx = tx - hero_pos[0]
-                                    dy = ty - hero_pos[1]
-                                    target_angle = math.degrees(math.atan2(-dx, -dy))
-                                    # Normalize angles to 0-360
-                                    target_angle = target_angle % 360
-                                    player_angle = angle % 360
-                                    # Shortest angle difference
-                                    diff = abs(target_angle - player_angle)
-                                    if diff > 180:
-                                        diff = 360 - diff
-                                    if diff < best_diff and diff < 15:  # 15 degrees tolerance
-                                        best_diff = diff
-                                        best_idx = i
-                                        
-                            if best_idx == burger_assembly_step:
-                                # Correct ingredient chosen!
-                                next_item = BURGER_STEPS[burger_assembly_step]
-                                burger_ingredients_placed.append(next_item)
-                                burger_assembly_step += 1
-                                l2_assembly_score += 10
-                                score += 10
-                                log_message("Placed %s (%d / 6)! (+10 pts)" % (next_item, burger_assembly_step))
-                                if burger_assembly_step >= len(BURGER_STEPS):
-                                    burger_ready = True
-                                    l2_assembly_score = 30
-                                    assembly_minigame_active = False
-                                    hero_pov = False
-                                    game_state = STATE_L2_COMPLETE
-                                    log_message("BURGER READY! Carry completed burger to Plating Station!")
-                            elif best_idx != -1:
-                                log_message("WRONG INGREDIENT! You need to place %s next." % BURGER_STEPS[burger_assembly_step])
-                            else:
-                                log_message("Not looking at any ingredient. Look directly at %s." % BURGER_STEPS[burger_assembly_step])
-                    elif burger_ready:
-                        log_message("BURGER READY! Take completed burger to Plating Station.")
-
+        if fries_frying_active:
+            dx = x - (WINDOW_WIDTH // 2)
+            dy = y - (WINDOW_HEIGHT // 2)
+            if abs(dx) > abs(dy):
+                clicked_dir = '→' if dx > 0 else '←'
             else:
-                near = nearest_station_within_radius()
-                if near:
-                    log_message("Near %s. Move to target station." % near.capitalize())
+                clicked_dir = '↓' if dy > 0 else '↑'
+            handle_fries_direction_input(clicked_dir)
+        else:
+            perform_interact_action()
 
     glutPostRedisplay()
 
@@ -2211,7 +2253,7 @@ def setupCamera():
             target_y = sy - 20
             target_z = 520
         else:
-            target_x = cam_x - 500 * math.sin(math.radians(angle))
+            target_x = cam_x + 500 * math.sin(math.radians(angle))
             target_y = cam_y - 500 * math.cos(math.radians(angle))
             target_z = 230
     else:
